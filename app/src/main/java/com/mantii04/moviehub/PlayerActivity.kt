@@ -26,11 +26,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -38,15 +38,10 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
-import androidx.media3.common.TrackGroup
-import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
-import androidx.media3.extractor.text.SubtitleParser
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
-import androidx.media3.ui.SubtitleView
 import kotlinx.coroutines.delay
 
 class PlayerActivity : ComponentActivity() {
@@ -68,7 +63,6 @@ class PlayerActivity : ComponentActivity() {
         val isTv = intent.getBooleanExtra("IS_TV", false)
         val season = intent.getIntExtra("SEASON", 0).takeIf { it > 0 }
         val episode = intent.getIntExtra("EPISODE", 0).takeIf { it > 0 }
-        val nextEmbedUrl = intent.getStringExtra("NEXT_EMBED_URL")
         val nextTitle = intent.getStringExtra("NEXT_TITLE")
 
         setContent {
@@ -83,7 +77,7 @@ class PlayerActivity : ComponentActivity() {
                     ExoPlayerView(
                         url = streamUrl!!, id = id, title = title, poster = poster,
                         isTv = isTv, season = season, episode = episode,
-                        nextEmbedUrl = nextEmbedUrl, nextTitle = nextTitle, db = db
+                        nextTitle = nextTitle, db = db
                     )
                 }
             }
@@ -92,11 +86,10 @@ class PlayerActivity : ComponentActivity() {
 
     override fun onDestroy() { exoPlayer?.release(); exoPlayer = null; super.onDestroy() }
 
-    @OptIn(androidx.media3.common.util.UnstableApi::class)
     @Composable
     fun ExoPlayerView(
         url: String, id: Int, title: String, poster: String, isTv: Boolean,
-        season: Int?, episode: Int?, nextEmbedUrl: String?, nextTitle: String?, db: AppDatabase
+        season: Int?, episode: Int?, nextTitle: String?, db: AppDatabase
     ) {
         var isPlaying by remember { mutableStateOf(true) }
         var position by remember { mutableStateOf(0L) }
@@ -107,6 +100,7 @@ class PlayerActivity : ComponentActivity() {
         var selectedSubtitle by remember { mutableStateOf<Subtitle?>(null) }
         var showUpNext by remember { mutableStateOf(false) }
         var upNextCountdown by remember { mutableStateOf(10) }
+        var upNextCancelled by remember { mutableStateOf(false) }
 
         LaunchedEffect(url) {
             if (exoPlayer == null) {
@@ -116,7 +110,6 @@ class PlayerActivity : ComponentActivity() {
                         .setForceHighestSupportedBitrate(true)
                         .build()
                 }
-
                 exoPlayer = ExoPlayer.Builder(this@PlayerActivity)
                     .setTrackSelector(trackSelector)
                     .build().apply {
@@ -126,7 +119,6 @@ class PlayerActivity : ComponentActivity() {
                         play()
                     }
 
-                // Fetch subtitles in background
                 SubtitleService.fetchSubtitles(id, season, episode) { subtitles = it }
 
                 while (true) {
@@ -139,29 +131,30 @@ class PlayerActivity : ComponentActivity() {
                             db.mediaDao().saveProgress(HistoryEntity(id, title, poster, isTv, position, duration))
                         }
 
-                        // Up Next trigger - 20 seconds before end
-                        val remaining = duration - position
-                        if (nextEmbedUrl != null && remaining in 1..20000 && !showUpNext) {
-                            showUpNext = true
+                        if (nextTitle != null && !upNextCancelled && !showUpNext) {
+                            val remaining = duration - position
+                            if (remaining in 1..20000 && duration > 60000) {
+                                showUpNext = true
+                            }
                         }
                     }
                 }
             }
         }
 
-        // Up Next countdown
         LaunchedEffect(showUpNext, upNextCountdown) {
             if (showUpNext) {
                 if (upNextCountdown > 0) {
                     delay(1000)
                     upNextCountdown--
                 } else {
+                    // Auto-advance: close and let detail screen trigger next episode
                     finish()
                 }
             }
         }
 
-        LaunchedEffect(controlsVisible, isPlaying) {
+        LaunchedEffect(controlsVisible, isPlaying, showUpNext) {
             if (controlsVisible && isPlaying && !showUpNext) {
                 delay(3000)
                 controlsVisible = false
@@ -196,11 +189,6 @@ class PlayerActivity : ComponentActivity() {
                         resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
                         keepScreenOn = true
                         useController = false
-                        subtitleView?.setStyle(
-                            SubtitleView.DEFAULT_TEXT_SIZE_FRACTION,
-                            SubtitleView.DEFAULT_BOTTOM_PADDING_FRACTION,
-                            SubtitleView.DEFAULT_STYLE
-                        )
                     }
                 },
                 modifier = Modifier.fillMaxSize()
@@ -215,13 +203,13 @@ class PlayerActivity : ComponentActivity() {
                     ) {
                         Text("Up Next", color = Color.Gray, fontSize = 14.sp)
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(nextTitle, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        Text(nextTitle, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
                         Spacer(modifier = Modifier.height(24.dp))
                         Text("Playing in $upNextCountdown...", color = Color.White, fontSize = 16.sp)
                         Spacer(modifier = Modifier.height(24.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                             OutlinedButton(
-                                onClick = { showUpNext = false; upNextCountdown = 10; exoPlayer?.play() },
+                                onClick = { showUpNext = false; upNextCancelled = true },
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
                             ) { Text("Cancel") }
                             Button(
@@ -246,7 +234,11 @@ class PlayerActivity : ComponentActivity() {
                         Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).padding(start = 8.dp))
                         if (subtitles.isNotEmpty()) {
                             IconButton(onClick = { showSubtitleSheet = true }) {
-                                Icon(Icons.Default.Subtitles, contentDescription = "Subtitles", tint = if (selectedSubtitle != null) Color(0xFFE50914) else Color.White)
+                                Icon(
+                                    Icons.Default.Subtitles,
+                                    contentDescription = "Subtitles",
+                                    tint = if (selectedSubtitle != null) Color(0xFFE50914) else Color.White
+                                )
                             }
                         }
                     }
@@ -304,11 +296,16 @@ class PlayerActivity : ComponentActivity() {
                 }
             }
 
-            // Subtitle selector sheet
+            // Subtitle selector sheet — using clickable Rows instead of ListTile
             if (showSubtitleSheet) {
-                Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.7f)).clickable { showSubtitleSheet = false }) {
+                Box(
+                    modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.7f))
+                        .clickable { showSubtitleSheet = false },
+                    contentAlignment = Alignment.Center
+                ) {
                     Column(
-                        modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.6f)
+                        modifier = Modifier
+                            .fillMaxWidth(0.6f)
                             .background(Color(0xFF141414), RoundedCornerShape(12.dp))
                             .padding(16.dp)
                     ) {
@@ -316,28 +313,34 @@ class PlayerActivity : ComponentActivity() {
                         Spacer(modifier = Modifier.height(12.dp))
                         LazyColumn {
                             item {
-                                ListTile(
-                                    title = { Text("Off", color = Color.White) },
-                                    onClick = {
-                                        selectedSubtitle = null
-                                        exoPlayer?.trackSelectionParameters = (exoPlayer?.trackSelectionParameters ?: androidx.media3.common.TrackSelectionParameters.Builder().build()).buildUpon()
-                                            .setTrackTypeDisabled(androidx.media3.common.C.TRACK_TYPE_TEXT, true).build()
-                                        showSubtitleSheet = false
-                                    }
-                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth()
+                                        .clickable {
+                                            selectedSubtitle = null
+                                            showSubtitleSheet = false
+                                        }
+                                        .padding(vertical = 12.dp, horizontal = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("Off", color = Color.White, fontSize = 15.sp)
+                                }
                             }
                             items(subtitles) { sub ->
-                                ListTile(
-                                    title = { Text(sub.label, color = if (selectedSubtitle == sub) Color(0xFFE50914) else Color.White) },
-                                    onClick = {
-                                        selectedSubtitle = sub
-                                        exoPlayer?.trackSelectionParameters = (exoPlayer?.trackSelectionParameters ?: androidx.media3.common.TrackSelectionParameters.Builder().build()).buildUpon()
-                                            .setTrackTypeDisabled(androidx.media3.common.C.TRACK_TYPE_TEXT, false).build()
-                                        // Note: sidecar subtitle loading requires MediaItem.SubtitleConfiguration
-                                        // This wires the UI; full SRT loading to be added next build
-                                        showSubtitleSheet = false
-                                    }
-                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth()
+                                        .clickable {
+                                            selectedSubtitle = sub
+                                            showSubtitleSheet = false
+                                        }
+                                        .padding(vertical = 12.dp, horizontal = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        sub.label,
+                                        color = if (selectedSubtitle == sub) Color(0xFFE50914) else Color.White,
+                                        fontSize = 15.sp
+                                    )
+                                }
                             }
                         }
                     }
