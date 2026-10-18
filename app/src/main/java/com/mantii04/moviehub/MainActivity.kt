@@ -485,17 +485,18 @@ fun DetailScreen(id: Int, isTv: Boolean, navController: NavHostController, db: A
 
         // Tabs
         item {
-            PrimaryTabRow(
+            TabRow(
                 selectedTabIndex = selectedTab,
                 containerColor = NfBlack,
                 contentColor = Color.White,
-                indicator = {
-                    TabRowDefaults.PrimaryIndicator(
-                        modifier = Modifier.tabIndicatorOffset(selectedTab, matchContentSize = true),
+                indicator = { tabPositions ->
+                    TabRowDefaults.SecondaryIndicator(
+                        modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
                         color = NfRed,
                         height = 2.dp
                     )
-                }
+                },
+                divider = { HorizontalDivider(color = NfSurface) }
             ) {
                 Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text(if (isTv) "Episodes" else "Details", fontSize = 14.sp) })
                 Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("More Like This", fontSize = 14.sp) })
