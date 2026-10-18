@@ -61,7 +61,7 @@ class PlayerActivity : ComponentActivity() {
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
 
-        val embedUrl = intent.getStringExtra("EMBED_URL")
+        val embedUrl = intent.getStringExtra("EMBED_URL") ?: ""
         val id = intent.getIntExtra("ID", 0)
         val title = intent.getStringExtra("TITLE") ?: ""
         val poster = intent.getStringExtra("POSTER") ?: ""

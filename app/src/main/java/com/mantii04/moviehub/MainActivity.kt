@@ -38,6 +38,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import coil.compose.AsyncImage
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
@@ -530,9 +534,9 @@ fun DetailScreen(id: Int, isTv: Boolean, navController: NavHostController, db: A
             item {
                 val starring = d.cast.take(4).joinToString(", ") { it.name }
                 Text(
-                    text = androidx.compose.ui.text.buildAnnotatedString {
-                        androidx.compose.ui.text.withStyle(androidx.compose.ui.text.SpanStyle(color = NfMuted)) { append("Starring: ") }
-                        androidx.compose.ui.text.withStyle(androidx.compose.ui.text.SpanStyle(color = Color.White)) { append(starring) }
+                    text = buildAnnotatedString {
+                        withStyle(SpanStyle(color = NfMuted)) { append("Starring: ") }
+                        withStyle(SpanStyle(color = Color.White)) { append(starring) }
                     },
                     fontSize = 13.sp,
                     modifier = Modifier.padding(horizontal = 16.dp)
