@@ -43,6 +43,12 @@ import coil.compose.AsyncImage
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.animation.core.tween
 
 private val NfBlack = Color(0xFF000000)
 private val NfSurface = Color(0xFF141414)
@@ -134,7 +140,7 @@ fun HomeScreen(navController: NavHostController, db: AppDatabase) {
         while (true) {
             delay(6000)
             val next = if (pagerState.currentPage < trending.take(5).size - 1) pagerState.currentPage + 1 else 0
-            pagerState.animateScrollToPage(next)
+            pagerState.animateScrollToPage(next, animationSpec = tween(durationMillis = 700))
         }
     }
 
@@ -341,11 +347,11 @@ fun Top10Card(number: Int, item: MediaItem, width: androidx.compose.ui.unit.Dp, 
         // Giant number
         Text(
             text = number.toString(),
-            color = Color.Transparent,
             fontSize = 120.sp,
             fontWeight = FontWeight.Black,
-            style = androidx.compose.ui.text.TextStyle(
-                drawStyle = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f, color = NfMuted.copy(alpha = 0.3f))
+            style = TextStyle(
+                color = NfMuted.copy(alpha = 0.4f),
+                drawStyle = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f)
             ),
             modifier = Modifier.align(Alignment.BottomStart).offset(x = (-10).dp, y = 10.dp)
         )
@@ -511,7 +517,7 @@ fun DetailScreen(id: Int, isTv: Boolean, navController: NavHostController, db: A
         if (d.cast.isNotEmpty()) {
             item {
                 val starring = d.cast.take(4).joinToString(", ") { it.name }
-                Text(text = androidx.compose.ui.text.buildAnnotatedString { androidx.compose.ui.text.withStyle(androidx.compose.ui.text.SpanStyle(color = NfMuted)) { append("Starring: ") }; androidx.compose.ui.text.withStyle(androidx.compose.ui.text.SpanStyle(color = Color.White)) { append(starring) } }, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 16.dp))
+                Text(text = buildAnnotatedString { withStyle(SpanStyle(color = NfMuted)) { append("Starring: ") }; withStyle(SpanStyle(color = Color.White)) { append(starring) } }, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 16.dp))
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
