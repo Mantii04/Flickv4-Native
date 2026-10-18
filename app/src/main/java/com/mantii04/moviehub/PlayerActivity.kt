@@ -26,6 +26,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 
@@ -62,12 +63,22 @@ class PlayerActivity : ComponentActivity() {
     fun ExoPlayerView(url: String) {
         LaunchedEffect(url) {
             if (exoPlayer == null) {
-                exoPlayer = ExoPlayer.Builder(this@PlayerActivity).build().apply {
-                    setMediaItem(MediaItem.fromUri(url))
-                    prepare()
-                    playWhenReady = true
-                    play()
+                // FORCE 1080p PLAYBACK
+                val trackSelector = DefaultTrackSelector(this@PlayerActivity).apply {
+                    parameters = buildUponParameters()
+                        .setMaxVideoSize(1920, 1080)
+                        .setForceHighestSupportedBitrate(true)
+                        .build()
                 }
+
+                exoPlayer = ExoPlayer.Builder(this@PlayerActivity)
+                    .setTrackSelector(trackSelector)
+                    .build().apply {
+                        setMediaItem(MediaItem.fromUri(url))
+                        prepare()
+                        playWhenReady = true
+                        play()
+                    }
             }
         }
 
@@ -87,15 +98,12 @@ class PlayerActivity : ComponentActivity() {
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Invisible Double Tap Overlays
+            // Double tap overlays
             Row(modifier = Modifier.fillMaxSize()) {
-                // Left Rewind Zone
                 Box(modifier = Modifier.weight(0.3f).fillMaxHeight().pointerInput(Unit) {
                     detectTapGestures(onDoubleTap = { exoPlayer?.seekTo((exoPlayer?.currentPosition ?: 0) - 10000) })
                 })
-                // Center Native Controls Zone (doesn't intercept)
                 Box(modifier = Modifier.weight(0.4f).fillMaxHeight())
-                // Right Forward Zone
                 Box(modifier = Modifier.weight(0.3f).fillMaxHeight().pointerInput(Unit) {
                     detectTapGestures(onDoubleTap = { exoPlayer?.seekTo((exoPlayer?.currentPosition ?: 0) + 10000) })
                 })

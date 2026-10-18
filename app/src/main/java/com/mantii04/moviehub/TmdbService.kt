@@ -19,10 +19,8 @@ object TmdbService {
     private fun fetch(path: String, onResult: (JSONObject?) -> Unit) {
         executor.execute {
             try {
-                // FIXED URL BUG: Check if path already has a query string
                 val separator = if (path.contains("?")) "&" else "?"
                 val request = Request.Builder().url("$BASE_URL$path${separator}api_key=$API_KEY").build()
-                
                 client.newCall(request).execute().use { response ->
                     if (response.isSuccessful) {
                         val json = JSONObject(response.body?.string() ?: "")
@@ -39,7 +37,6 @@ object TmdbService {
 
     fun getTrending(page: Int = 1, onResult: (List<MediaItem>) -> Unit) = fetch("/trending/all/day?page=$page") { onResult(parseResults(it)) }
     fun getPopularMovies(page: Int = 1, onResult: (List<MediaItem>) -> Unit) = fetch("/movie/popular?page=$page") { onResult(parseResults(it)) }
-    fun getPopularTv(page: Int = 1, onResult: (List<MediaItem>) -> Unit) = fetch("/tv/popular?page=$page") { onResult(parseResults(it)) }
     
     fun search(query: String, onResult: (List<MediaItem>) -> Unit) {
         val encodedQuery = java.net.URLEncoder.encode(query, "UTF-8")
@@ -48,7 +45,7 @@ object TmdbService {
 
     fun getDetails(id: Int, isTv: Boolean, onResult: (MediaDetail?) -> Unit) {
         val type = if (isTv) "tv" else "movie"
-        fetch("/$type/$id?append_to_response=credits") { json ->
+        fetch("/$type/$id?append_to_response=credits,similar") { json ->
             if (json == null) { onResult(null); return@fetch }
             
             val cast = mutableListOf<CastMember>()
@@ -59,6 +56,21 @@ object TmdbService {
                 }
             }
             
+            val similar = mutableListOf<MediaItem>()
+            json.optJSONObject("similar")?.optJSONArray("results")?.let { simArray ->
+                for (i in 0 until minOf(simArray.length(), 10)) {
+                    val s = simArray.getJSONObject(i)
+                    similar.add(MediaItem(
+                        id = s.optInt("id"),
+                        title = if (isTv) s.optString("name") else s.optString("title"),
+                        posterPath = s.optString("poster_path"),
+                        backdropPath = s.optString("backdrop_path"),
+                        isTv = isTv,
+                        year = (if (isTv) s.optString("first_air_date") else s.optString("release_date")).take(4)
+                    ))
+                }
+            }
+
             val seasons = mutableListOf<Season>()
             if (isTv) {
                 json.optJSONArray("seasons")?.let { sArr ->
@@ -81,7 +93,8 @@ object TmdbService {
                 rating = json.optDouble("vote_average", 0.0),
                 isTv = isTv,
                 cast = cast,
-                seasons = seasons
+                seasons = seasons,
+                similar = similar
             ))
         }
     }
@@ -132,7 +145,7 @@ object TmdbService {
 }
 
 data class MediaItem(val id: Int, val title: String, val posterPath: String, val backdropPath: String, val isTv: Boolean, val year: String)
-data class MediaDetail(val id: Int, val title: String, val overview: String, val backdropPath: String, val posterPath: String, val year: String, val rating: Double, val isTv: Boolean, val cast: List<CastMember>, val seasons: List<Season>)
+data class MediaDetail(val id: Int, val title: String, val overview: String, val backdropPath: String, val posterPath: String, val year: String, val rating: Double, val isTv: Boolean, val cast: List<CastMember>, val seasons: List<Season>, val similar: List<MediaItem>)
 data class CastMember(val name: String, val character: String, val profilePath: String)
 data class Season(val number: Int, val episodeCount: Int)
 data class Episode(val epNum: Int, val title: String, val overview: String, val stillPath: String)
