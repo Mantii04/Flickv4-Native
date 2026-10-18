@@ -36,15 +36,65 @@ object TmdbService {
 
     fun getTrending(onResult: (List<MediaItem>) -> Unit) = fetch("/trending/all/day") { onResult(parseResults(it)) }
     fun getPopularMovies(onResult: (List<MediaItem>) -> Unit) = fetch("/movie/popular") { onResult(parseResults(it)) }
+    fun getPopularTv(onResult: (List<MediaItem>) -> Unit) = fetch("/tv/popular") { onResult(parseResults(it)) }
     
     fun search(query: String, onResult: (List<MediaItem>) -> Unit) {
         val encodedQuery = java.net.URLEncoder.encode(query, "UTF-8")
         fetch("/search/multi?query=$encodedQuery") { onResult(parseResults(it)) }
     }
 
-    fun getMovieDetails(id: Int, onResult: (String) -> Unit) {
-        fetch("/movie/$id") { json ->
-            onResult(json?.optString("overview") ?: "No synopsis available.")
+    fun getDetails(id: Int, isTv: Boolean, onResult: (MediaDetail?) -> Unit) {
+        val type = if (isTv) "tv" else "movie"
+        fetch("/$type/$id?append_to_response=credits") { json ->
+            if (json == null) { onResult(null); return@fetch }
+            val cast = mutableListOf<CastMember>()
+            json.optJSONObject("credits")?.optJSONArray("cast")?.let { castArray ->
+                for (i in 0 until minOf(castArray.length(), 10)) {
+                    val c = castArray.getJSONObject(i)
+                    cast.add(CastMember(c.optString("name"), c.optString("character"), c.optString("profile_path")))
+                }
+            }
+            val seasons = mutableListOf<Season>()
+            if (isTv) {
+                json.optJSONArray("seasons")?.let { sArr ->
+                    for (i in 0 until sArr.length()) {
+                        val s = sArr.getJSONObject(i)
+                        if (s.optInt("season_number") > 0) {
+                            seasons.add(Season(s.optInt("season_number"), s.optInt("episode_count")))
+                        }
+                    }
+                }
+            }
+            onResult(MediaDetail(
+                id = id,
+                title = if (isTv) json.optString("name") else json.optString("title"),
+                overview = json.optString("overview"),
+                backdropPath = json.optString("backdrop_path"),
+                posterPath = json.optString("poster_path"),
+                year = (if (isTv) json.optString("first_air_date") else json.optString("release_date")).take(4),
+                rating = json.optDouble("vote_average", 0.0),
+                isTv = isTv,
+                cast = cast,
+                seasons = seasons
+            ))
+        }
+    }
+
+    fun getEpisodes(id: Int, seasonNum: Int, onResult: (List<Episode>) -> Unit) {
+        fetch("/tv/$id/season/$seasonNum") { json ->
+            val eps = mutableListOf<Episode>()
+            json?.optJSONArray("episodes")?.let { eArr ->
+                for (i in 0 until eArr.length()) {
+                    val e = eArr.getJSONObject(i)
+                    eps.add(Episode(
+                        epNum = e.optInt("episode_number"),
+                        title = e.optString("name"),
+                        overview = e.optString("overview"),
+                        stillPath = e.optString("still_path")
+                    ))
+                }
+            }
+            onResult(eps)
         }
     }
 
@@ -70,11 +120,8 @@ object TmdbService {
     }
 }
 
-data class MediaItem(
-    val id: Int,
-    val title: String,
-    val posterPath: String,
-    val backdropPath: String,
-    val isTv: Boolean,
-    val year: String
-)
+data class MediaItem(val id: Int, val title: String, val posterPath: String, val backdropPath: String, val isTv: Boolean, val year: String)
+data class MediaDetail(val id: Int, val title: String, val overview: String, val backdropPath: String, val posterPath: String, val year: String, val rating: Double, val isTv: Boolean, val cast: List<CastMember>, val seasons: List<Season>)
+data class CastMember(val name: String, val character: String, val profilePath: String)
+data class Season(val number: Int, val episodeCount: Int)
+data class Episode(val epNum: Int, val title: String, val overview: String, val stillPath: String)
