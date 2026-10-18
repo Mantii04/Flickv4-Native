@@ -150,15 +150,14 @@ class PlayerActivity : ComponentActivity() {
         var duration by remember { mutableStateOf(1L) }
         var controlsVisible by remember { mutableStateOf(true) }
         var selectedQuality by remember { mutableStateOf<Int?>(null) }
+        var videoWidth by remember { mutableStateOf(0) }
+        var videoHeight by remember { mutableStateOf(0) }
+        var playError by remember { mutableStateOf<String?>(null) }
 
         LaunchedEffect(url) {
             if (exoPlayer == null) {
-                val trackSelector = DefaultTrackSelector(this@PlayerActivity).apply {
-                    parameters = buildUponParameters()
-                        .setMaxVideoSize(1920, 1080)
-                        .setForceHighestSupportedBitrate(true)
-                        .build()
-                }
+                // No max-size filter — let ExoPlayer choose from what the CDN serves
+                val trackSelector = DefaultTrackSelector(this@PlayerActivity)
                 
                 // CRITICAL FIX: Send Referer/Origin headers so the CDN allows video chunks
                 val dataSourceFactory = DefaultHttpDataSource.Factory()
@@ -189,16 +188,33 @@ class PlayerActivity : ComponentActivity() {
                     override fun onPlaybackStateChanged(state: Int) {
                         if (state == Player.STATE_READY) player.play()
                     }
+                    override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                        playError = error.errorCodeName + ": " + (error.message ?: "unknown")
+                    }
+                    override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
+                        videoWidth = videoSize.width
+                        videoHeight = videoSize.height
+                    }
                     override fun onTracksChanged(tracks: Tracks) {
                         val videoGroups = tracks.groups.filter { it.type == C.TRACK_TYPE_VIDEO }
-                        if (videoGroups.isEmpty()) return
+                        if (videoGroups.isEmpty()) {
+                            playError = "No video track found (audio only)"
+                            return
+                        }
                         var bestGroup: Tracks.Group? = null
                         var bestHeight = 0
                         var bestTrackIndex = 0
                         for (group in videoGroups) {
                             for (i in 0 until group.length) {
                                 val h = group.getTrackFormat(i).height ?: 0
-                                if (h > bestHeight) {
+                                // Prefer 1080p; if unavailable, take the largest
+                                val takeIt = if (bestHeight in 900..1080) {
+                                    // Already have 1080-ish, only take closer to 1080
+                                    h > bestHeight && h <= 1080
+                                } else {
+                                    h > bestHeight
+                                }
+                                if (takeIt) {
                                     bestHeight = h
                                     bestGroup = group
                                     bestTrackIndex = i
@@ -212,7 +228,9 @@ class PlayerActivity : ComponentActivity() {
                                     .buildUpon().setOverrideForType(override).build()
                                 player.trackSelectionParameters = params
                                 selectedQuality = bestHeight
-                            } catch (_: Exception) {}
+                            } catch (e: Exception) {
+                                playError = "Track select failed: " + e.message
+                            }
                         }
                     }
                 })
@@ -260,7 +278,30 @@ class PlayerActivity : ComponentActivity() {
                     Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = { finish() }) { Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White) }
                         Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).padding(start = 8.dp))
-                        if (selectedQuality != null) Text("${selectedQuality}p", color = Color(0xFFE50914), fontSize = 12.sp, modifier = Modifier.padding(end = 8.dp))
+                        Text(
+                            when {
+                                playError != null -> "ERR"
+                                selectedQuality != null -> "${selectedQuality}p"
+                                videoWidth > 0 -> "${videoWidth}x${videoHeight}"
+                                else -> "..."
+                            },
+                            color = if (playError != null) Color.Yellow else Color(0xFFE50914),
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                    }
+                    if (playError != null) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp).background(Color.Black.copy(alpha = 0.85f), androidx.compose.foundation.shape.RoundedCornerShape(8.dp)).padding(16.dp)) {
+                                Text("Playback error", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(playError!!, color = Color.Yellow, fontSize = 12.sp)
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Button(onClick = { finish() }) { Text("Back") }
+                                }
+                            }
+                        }
                     }
                     Row(modifier = Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(32.dp), verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = { exoPlayer?.seekTo((exoPlayer?.currentPosition ?: 0) - 10000) }, modifier = Modifier.size(56.dp).background(Color.Black.copy(alpha = 0.6f), CircleShape)) { Icon(Icons.Default.Replay10, contentDescription = "-10s", tint = Color.White, modifier = Modifier.size(32.dp)) }

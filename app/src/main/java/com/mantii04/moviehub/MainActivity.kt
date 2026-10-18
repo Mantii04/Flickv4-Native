@@ -94,9 +94,13 @@ class MainActivity : ComponentActivity() {
                     NavHost(navController, startDestination = "home", modifier = Modifier.padding(padding)) {
                         composable("home") { HomeScreen(navController, db) }
                         composable("search") { SearchScreen(navController) }
-                        composable("live") { PlaceholderScreen("Live TV") }
-                        composable("downloads") { PlaceholderScreen("Downloads") }
-                        composable("settings") { PlaceholderScreen("Settings") }
+                        composable("live") { LiveScreen() }
+                        composable("downloads") { DownloadsScreen() }
+                        composable("settings") { SettingsScreen() }
+                        composable("genre/{name}") { backStackEntry ->
+                            val name = backStackEntry.arguments?.getString("name") ?: ""
+                            GenreScreen(name, navController)
+                        }
                         composable("detail/{id}/{isTv}") { backStackEntry ->
                             val id = backStackEntry.arguments?.getString("id")?.toInt() ?: 0
                             val isTv = backStackEntry.arguments?.getString("isTv")?.toBoolean() ?: false
@@ -110,9 +114,47 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun PlaceholderScreen(title: String) {
-    Box(modifier = Modifier.fillMaxSize().background(NfBlack), contentAlignment = Alignment.Center) {
-        Text(title, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+fun LiveScreen() {
+    Column(modifier = Modifier.fillMaxSize().background(NfBlack).padding(16.dp)) {
+        Text("Live TV", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("Live TV channels coming in the next build.", color = NfMuted, fontSize = 14.sp)
+    }
+}
+
+@Composable
+fun DownloadsScreen() {
+    Column(modifier = Modifier.fillMaxSize().background(NfBlack).padding(16.dp)) {
+        Text("Downloads", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("Offline downloads coming in the next build.", color = NfMuted, fontSize = 14.sp)
+    }
+}
+
+@Composable
+fun SettingsScreen() {
+    Column(modifier = Modifier.fillMaxSize().background(NfBlack).padding(16.dp)) {
+        Text("Settings", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(modifier = Modifier.fillMaxWidth().background(NfSurface, androidx.compose.foundation.shape.RoundedCornerShape(8.dp)).padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("App Version", color = Color.White)
+            Text("1.0.0", color = NfMuted)
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(modifier = Modifier.fillMaxWidth().background(NfSurface, androidx.compose.foundation.shape.RoundedCornerShape(8.dp)).padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("Built with", color = Color.White)
+            Text("Kotlin · Jetpack Compose · Media3", color = NfMuted, fontSize = 12.sp)
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(modifier = Modifier.fillMaxWidth().background(NfSurface, androidx.compose.foundation.shape.RoundedCornerShape(8.dp)).padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("Data Source", color = Color.White)
+            Text("TMDB", color = NfMuted)
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(modifier = Modifier.fillMaxWidth().background(NfSurface, androidx.compose.foundation.shape.RoundedCornerShape(8.dp)).padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("Stream Resolver", color = Color.White)
+            Text("VixSrc", color = NfMuted)
+        }
     }
 }
 
@@ -201,24 +243,22 @@ fun HomeScreen(navController: NavHostController, db: AppDatabase) {
                 }
             }
 
-            // 3. Genres Grid (Horizontal scroll of categories)
+            // 3. Genres Grid (tap to filter)
             item {
+                var genreExpanded by remember { mutableStateOf(false) }
                 Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Text("Genres", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                        Row {
-                            Text("Movies", color = Color.White, modifier = Modifier.background(NfRed, RoundedCornerShape(12.dp)).padding(horizontal = 12.dp, vertical = 4.dp), fontSize = 12.sp)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("TV", color = NfMuted, fontSize = 12.sp, modifier = Modifier.padding(vertical = 4.dp))
-                        }
+                        Text("Tap to filter", color = NfMuted, fontSize = 11.sp)
                     }
                     Spacer(modifier = Modifier.height(12.dp))
-                    // Use a FlowRow-like structure by chunking into rows of 2 (or 3)
                     for (chunk in genres.chunked(3)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             chunk.forEach { genre ->
                                 Row(
-                                    modifier = Modifier.weight(1f).background(NfSurface, RoundedCornerShape(8.dp)).padding(12.dp),
+                                    modifier = Modifier.weight(1f).background(NfSurface, RoundedCornerShape(8.dp)).clickable {
+                                        navController.navigate("genre/$genre")
+                                    }.padding(12.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(Icons.Default.Movie, contentDescription = null, tint = NfRed, modifier = Modifier.size(16.dp))
@@ -577,5 +617,62 @@ fun DetailScreen(id: Int, isTv: Boolean, navController: NavHostController, db: A
             }
         }
         item { Spacer(modifier = Modifier.height(24.dp)) }
+    }
+}
+
+
+@Composable
+fun GenreScreen(genreName: String, navController: NavHostController) {
+    var items by remember { mutableStateOf<List<MediaItem>>(emptyList()) }
+    var loading by remember { mutableStateOf(true) }
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+
+    val genreIds = mapOf(
+        "Action" to "28", "Adventure" to "12", "Animation" to "16", "Comedy" to "35",
+        "Crime" to "80", "Documentary" to "99", "Drama" to "18", "Family" to "10751",
+        "Fantasy" to "14", "History" to "36", "Horror" to "27", "Music" to "10402",
+        "Mystery" to "9648", "Romance" to "10749", "Sci-Fi" to "878", "Thriller" to "53"
+    )
+
+    LaunchedEffect(genreName) {
+        val id = genreIds[genreName] ?: return@LaunchedEffect
+        TmdbService.discoverByGenre(id) { items = it; loading = false }
+    }
+
+    Column(modifier = Modifier.fillMaxSize().background(NfBlack)) {
+        Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = { navController.popBackStack() }) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(genreName, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        }
+        if (loading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = NfRed)
+            }
+        } else if (items.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("No results for $genreName", color = NfMuted)
+            }
+        } else {
+            val gap = 8.dp
+            val columns = 3
+            val cardWidth = (screenWidth - 32.dp - (gap * (columns - 1))) / columns
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(columns),
+                contentPadding = PaddingValues(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(gap),
+                verticalArrangement = Arrangement.spacedBy(gap)
+            ) {
+                items(items) { item ->
+                    FlickCard(
+                        title = item.title,
+                        posterPath = item.posterPath,
+                        width = cardWidth
+                    ) { navController.navigate("detail/${item.id}/${item.isTv}") }
+                }
+            }
+        }
     }
 }
