@@ -1,6 +1,7 @@
 package com.mantii04.moviehub
 
 import android.content.pm.ActivityInfo
+import android.view.ViewGroup
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
