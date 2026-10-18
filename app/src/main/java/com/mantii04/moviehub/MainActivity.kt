@@ -42,13 +42,44 @@ class MainActivity : ComponentActivity() {
             val db = AppDatabase.getDatabase(context)
             MaterialTheme(colorScheme = darkColorScheme(primary = Color(0xFFE50914), background = Color.Black)) {
                 val navController = rememberNavController()
-                NavHost(navController, startDestination = "home") {
-                    composable("home") { HomeScreen(navController, db) }
-                    composable("search") { SearchScreen(navController) }
-                    composable("detail/{id}/{isTv}") { backStackEntry ->
-                        val id = backStackEntry.arguments?.getString("id")?.toInt() ?: 0
-                        val isTv = backStackEntry.arguments?.getString("isTv")?.toBoolean() ?: false
-                        DetailScreen(id, isTv, navController, db)
+                val navBackStackEntry by navController.currentBackStackEntryAsState()
+                val currentRoute = navBackStackEntry?.destination?.route
+
+                Scaffold(
+                    bottomBar = {
+                        if (currentRoute != "detail/{id}/{isTv}") {
+                            NavigationBar(containerColor = Color.Black) {
+                                NavigationBarItem(
+                                    icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
+                                    label = { Text("Home") },
+                                    selected = currentRoute == "home",
+                                    onClick = { navController.navigate("home") { popUpTo("home") { inclusive = true } } }
+                                )
+                                NavigationBarItem(
+                                    icon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+                                    label = { Text("Search") },
+                                    selected = currentRoute == "search",
+                                    onClick = { navController.navigate("search") { popUpTo("home") } }
+                                )
+                                NavigationBarItem(
+                                    icon = { Icon(Icons.Default.List, contentDescription = "My List") },
+                                    label = { Text("My List") },
+                                    selected = currentRoute == "mylist",
+                                    onClick = { navController.navigate("mylist") { popUpTo("home") } }
+                                )
+                            }
+                        }
+                    }
+                ) { padding ->
+                    NavHost(navController, startDestination = "home", modifier = Modifier.padding(padding)) {
+                        composable("home") { HomeScreen(navController, db) }
+                        composable("search") { SearchScreen(navController) }
+                        composable("mylist") { MyListScreen(navController, db) }
+                        composable("detail/{id}/{isTv}") { backStackEntry ->
+                            val id = backStackEntry.arguments?.getString("id")?.toInt() ?: 0
+                            val isTv = backStackEntry.arguments?.getString("isTv")?.toBoolean() ?: false
+                            DetailScreen(id, isTv, navController, db)
+                        }
                     }
                 }
             }
@@ -82,25 +113,18 @@ fun HomeScreen(navController: NavHostController, db: AppDatabase) {
             Box(modifier = Modifier.fillMaxWidth().height(500.dp)) {
                 if (trending.isNotEmpty()) {
                     HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
-                        AsyncImage(
-                            model = TmdbService.IMG_BASE + "original" + trending[page].backdropPath,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
+                        AsyncImage(model = TmdbService.IMG_BASE + "original" + trending[page].backdropPath, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                     }
                     Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(colors = listOf(Color.Transparent, Color.Black), startY = 300f)))
                     Column(modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(trending[pagerState.currentPage].title, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(16.dp))
-                        Row {
-                            Button(
-                                onClick = { navController.navigate("detail/${trending[pagerState.currentPage].id}/${trending[pagerState.currentPage].isTv}") },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)
-                            ) {
-                                Icon(Icons.Default.PlayArrow, contentDescription = null)
-                                Text("Play", fontWeight = FontWeight.Bold)
-                            }
+                        Button(
+                            onClick = { navController.navigate("detail/${trending[pagerState.currentPage].id}/${trending[pagerState.currentPage].isTv}") },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)
+                        ) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null)
+                            Text("Play", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -115,7 +139,6 @@ fun HomeScreen(navController: NavHostController, db: AppDatabase) {
                         Column(modifier = Modifier.width(120.dp).clickable { navController.navigate("detail/${item.id}/${item.isTv}") }) {
                             Box(modifier = Modifier.height(180.dp).fillMaxWidth()) {
                                 AsyncImage(model = TmdbService.IMG_BASE + "w342" + item.posterPath, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(4.dp)))
-                                // Progress bar
                                 val progressFraction = if (item.duration > 0) item.progress.toFloat() / item.duration else 0f
                                 LinearProgressIndicator(progress = { progressFraction }, modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(3.dp), color = Color(0xFFE50914), trackColor = Color.DarkGray)
                             }
@@ -138,12 +161,31 @@ fun Carousel(title: String, items: List<MediaItem>, navController: NavHostContro
         Spacer(modifier = Modifier.height(8.dp))
         LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(items) { item ->
-                AsyncImage(
-                    model = TmdbService.IMG_BASE + "w342" + item.posterPath,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.width(110.dp).height(165.dp).clip(RoundedCornerShape(4.dp)).clickable { navController.navigate("detail/${item.id}/${item.isTv}") }
-                )
+                AsyncImage(model = TmdbService.IMG_BASE + "w342" + item.posterPath, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.width(110.dp).height(165.dp).clip(RoundedCornerShape(4.dp)).clickable { navController.navigate("detail/${item.id}/${item.isTv}") })
+            }
+        }
+    }
+}
+
+@Composable
+fun MyListScreen(navController: NavHostController, db: AppDatabase) {
+    var myList by remember { mutableStateOf<List<MyListEntity>>(emptyList()) }
+    LaunchedEffect(Unit) { db.mediaDao().getMyList().collect { myList = it } }
+
+    Column(modifier = Modifier.fillMaxSize().background(Color.Black).padding(16.dp)) {
+        Text("My List", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(16.dp))
+        if (myList.isEmpty()) {
+            Text("Your list is empty.", color = Color.Gray)
+        } else {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(myList) { item ->
+                    Row(modifier = Modifier.fillMaxWidth().clickable { navController.navigate("detail/${item.id}/${item.isTv}") }, verticalAlignment = Alignment.CenterVertically) {
+                        AsyncImage(model = TmdbService.IMG_BASE + "w92" + item.posterPath, contentDescription = null, modifier = Modifier.width(60.dp).height(90.dp).clip(RoundedCornerShape(4.dp)))
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(item.title, color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                }
             }
         }
     }
@@ -322,12 +364,7 @@ fun DetailScreen(id: Int, isTv: Boolean, navController: NavHostController, db: A
             items(d.similar.chunked(3)) { rowItems ->
                 Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     rowItems.forEach { item ->
-                        AsyncImage(
-                            model = TmdbService.IMG_BASE + "w342" + item.posterPath,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.weight(1f).aspectRatio(0.66f).clip(RoundedCornerShape(4.dp)).clickable { navController.navigate("detail/${item.id}/${item.isTv}") }
-                        )
+                        AsyncImage(model = TmdbService.IMG_BASE + "w342" + item.posterPath, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).aspectRatio(0.66f).clip(RoundedCornerShape(4.dp)).clickable { navController.navigate("detail/${item.id}/${item.isTv}") })
                     }
                     repeat(3 - rowItems.size) { Spacer(modifier = Modifier.weight(1f)) }
                 }
