@@ -117,6 +117,9 @@ object TmdbService {
         }
     }
 
+    fun discoverByGenre(genreId: String, onResult: (List<MediaItem>) -> Unit) =
+        fetch("/discover/movie?with_genres=$genreId&sort_by=popularity.desc") { onResult(parseResults(it)) }
+
     private fun parseResults(json: JSONObject?): List<MediaItem> {
         val list = mutableListOf<MediaItem>()
         val results = json?.optJSONArray("results") ?: return list
