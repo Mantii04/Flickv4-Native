@@ -19,7 +19,10 @@ object TmdbService {
     private fun fetch(path: String, onResult: (JSONObject?) -> Unit) {
         executor.execute {
             try {
-                val request = Request.Builder().url("$BASE_URL$path?api_key=$API_KEY").build()
+                // FIXED URL BUG: Check if path already has a query string
+                val separator = if (path.contains("?")) "&" else "?"
+                val request = Request.Builder().url("$BASE_URL$path${separator}api_key=$API_KEY").build()
+                
                 client.newCall(request).execute().use { response ->
                     if (response.isSuccessful) {
                         val json = JSONObject(response.body?.string() ?: "")
@@ -34,9 +37,9 @@ object TmdbService {
         }
     }
 
-    fun getTrending(onResult: (List<MediaItem>) -> Unit) = fetch("/trending/all/day") { onResult(parseResults(it)) }
-    fun getPopularMovies(onResult: (List<MediaItem>) -> Unit) = fetch("/movie/popular") { onResult(parseResults(it)) }
-    fun getPopularTv(onResult: (List<MediaItem>) -> Unit) = fetch("/tv/popular") { onResult(parseResults(it)) }
+    fun getTrending(page: Int = 1, onResult: (List<MediaItem>) -> Unit) = fetch("/trending/all/day?page=$page") { onResult(parseResults(it)) }
+    fun getPopularMovies(page: Int = 1, onResult: (List<MediaItem>) -> Unit) = fetch("/movie/popular?page=$page") { onResult(parseResults(it)) }
+    fun getPopularTv(page: Int = 1, onResult: (List<MediaItem>) -> Unit) = fetch("/tv/popular?page=$page") { onResult(parseResults(it)) }
     
     fun search(query: String, onResult: (List<MediaItem>) -> Unit) {
         val encodedQuery = java.net.URLEncoder.encode(query, "UTF-8")
@@ -47,13 +50,15 @@ object TmdbService {
         val type = if (isTv) "tv" else "movie"
         fetch("/$type/$id?append_to_response=credits") { json ->
             if (json == null) { onResult(null); return@fetch }
+            
             val cast = mutableListOf<CastMember>()
             json.optJSONObject("credits")?.optJSONArray("cast")?.let { castArray ->
-                for (i in 0 until minOf(castArray.length(), 10)) {
+                for (i in 0 until minOf(castArray.length(), 15)) {
                     val c = castArray.getJSONObject(i)
                     cast.add(CastMember(c.optString("name"), c.optString("character"), c.optString("profile_path")))
                 }
             }
+            
             val seasons = mutableListOf<Season>()
             if (isTv) {
                 json.optJSONArray("seasons")?.let { sArr ->
@@ -65,6 +70,7 @@ object TmdbService {
                     }
                 }
             }
+            
             onResult(MediaDetail(
                 id = id,
                 title = if (isTv) json.optString("name") else json.optString("title"),
@@ -103,18 +109,23 @@ object TmdbService {
         val results = json?.optJSONArray("results") ?: return list
         for (i in 0 until results.length()) {
             val obj = results.getJSONObject(i)
-            val isTv = obj.optString("media_type") == "tv" || obj.has("first_air_date")
+            val type = obj.optString("media_type")
+            if (type == "person") continue 
+            
+            val isTv = type == "tv" || obj.has("first_air_date")
             val title = if (isTv) obj.optString("name") else obj.optString("title")
             val date = if (isTv) obj.optString("first_air_date") else obj.optString("release_date")
             
-            list.add(MediaItem(
-                id = obj.optInt("id"),
-                title = title,
-                posterPath = obj.optString("poster_path"),
-                backdropPath = obj.optString("backdrop_path"),
-                isTv = isTv,
-                year = date.take(4)
-            ))
+            if (title.isNotEmpty()) {
+                list.add(MediaItem(
+                    id = obj.optInt("id"),
+                    title = title,
+                    posterPath = obj.optString("poster_path"),
+                    backdropPath = obj.optString("backdrop_path"),
+                    isTv = isTv,
+                    year = date.take(4)
+                ))
+            }
         }
         return list
     }

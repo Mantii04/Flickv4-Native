@@ -7,8 +7,8 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -74,39 +74,94 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun HomeScreen(navController: NavHostController) {
-    var trending by remember { mutableStateOf<List<MediaItem>>(emptyList()) }
-    LaunchedEffect(Unit) { TmdbService.getTrending { trending = it } }
+    var items by remember { mutableStateOf<List<MediaItem>>(emptyList()) }
+    var hero by remember { mutableStateOf<MediaItem?>(null) }
+    var page by remember { mutableStateOf(1) }
+    var isLoading by remember { mutableStateOf(false) }
+    var hasMore by remember { mutableStateOf(true) }
+    val gridState = rememberLazyGridState()
 
-    LazyColumn(modifier = Modifier.fillMaxSize().background(Color(0xFF141414))) {
-        item {
-            if (trending.isNotEmpty()) {
-                val hero = trending.first()
+    // Initial load
+    LaunchedEffect(Unit) {
+        isLoading = true
+        TmdbService.getTrending(1) { 
+            hero = it.firstOrNull()
+            items = it
+            isLoading = false
+        }
+    }
+
+    // Infinite scroll trigger
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            val lastVisible = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            lastVisible >= items.size - 5 && !isLoading && hasMore
+        }
+    }
+
+    LaunchedEffect(shouldLoadMore) {
+        if (shouldLoadMore) {
+            isLoading = true
+            page++
+            TmdbService.getTrending(page) { newItems ->
+                if (newItems.isEmpty()) {
+                    hasMore = false
+                } else {
+                    items = items + newItems
+                }
+                isLoading = false
+            }
+        }
+    }
+
+    LazyVerticalGrid(
+        state = gridState,
+        columns = GridCells.Adaptive(minSize = 110.dp),
+        contentPadding = PaddingValues(bottom = 32.dp),
+        modifier = Modifier.fillMaxSize().background(Color(0xFF141414))
+    ) {
+        // Hero Banner
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            if (hero != null) {
                 Box(modifier = Modifier.fillMaxWidth().height(500.dp)) {
-                    AsyncImage(model = TmdbService.IMG_BASE + "original" + hero.backdropPath, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                    AsyncImage(model = TmdbService.IMG_BASE + "original" + hero!!.backdropPath, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                     Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(colors = listOf(Color.Transparent, Color(0xFF141414)), startY = 300f)))
                     Column(modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(hero.title, color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold)
+                        Text(hero!!.title, color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { navController.navigate("detail/${hero.id}/${hero.isTv}") }, colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)) {
+                        Button(onClick = { navController.navigate("detail/${hero!!.id}/${hero!!.isTv}") }, colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)) {
                             Text("▶ Play", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
             }
         }
-        item { CarouselRow("Trending Now", trending, navController) }
-    }
-}
 
-@Composable
-fun CarouselRow(title: String, items: List<MediaItem>, navController: NavHostController) {
-    if (items.isEmpty()) return
-    Column(modifier = Modifier.padding(vertical = 16.dp)) {
-        Text(title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp))
-        Spacer(modifier = Modifier.height(8.dp))
-        LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(items) { item ->
-                AsyncImage(model = TmdbService.IMG_BASE + "w342" + item.posterPath, contentDescription = item.title, contentScale = ContentScale.Crop, modifier = Modifier.width(120.dp).height(180.dp).clip(RoundedCornerShape(8.dp)).clickable { navController.navigate("detail/${item.id}/${item.isTv}") })
+        // Title for the grid
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            Text("Trending Now", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(16.dp))
+        }
+
+        // The Infinite Grid
+        items(items) { item ->
+            AsyncImage(
+                model = TmdbService.IMG_BASE + "w342" + item.posterPath,
+                contentDescription = item.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .padding(4.dp)
+                    .aspectRatio(0.66f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { navController.navigate("detail/${item.id}/${item.isTv}") }
+            )
+        }
+
+        // Loading Spinner at bottom
+        if (isLoading) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Color.Red)
+                }
             }
         }
     }
@@ -119,7 +174,7 @@ fun SearchScreen(navController: NavHostController) {
     var isSearching by remember { mutableStateOf(false) }
 
     LaunchedEffect(query) {
-        if (query.length < 2) { results = emptyList(); return@LaunchedEffect }
+        if (query.length < 2) { results = emptyList(); isSearching = false; return@LaunchedEffect }
         isSearching = true
         delay(500) // Debounce
         TmdbService.search(query) { results = it; isSearching = false }
@@ -128,8 +183,10 @@ fun SearchScreen(navController: NavHostController) {
     Column(modifier = Modifier.fillMaxSize().background(Color(0xFF141414)).padding(16.dp)) {
         TextField(value = query, onValueChange = { query = it }, placeholder = { Text("Search movies, TV shows...", color = Color.Gray) }, modifier = Modifier.fillMaxWidth().background(Color(0xFF222222), RoundedCornerShape(8.dp)), colors = TextFieldDefaults.colors(focusedContainerColor = Color(0xFF222222), unfocusedContainerColor = Color(0xFF222222), focusedTextColor = Color.White, unfocusedTextColor = Color.White))
         Spacer(modifier = Modifier.height(16.dp))
-        if (isSearching) { CircularProgressIndicator(color = Color.Red, modifier = Modifier.align(Alignment.CenterHorizontally)) } 
-        else {
+        
+        if (isSearching) { 
+            CircularProgressIndicator(color = Color.Red, modifier = Modifier.align(Alignment.CenterHorizontally)) 
+        } else {
             LazyColumn {
                 items(results) { item ->
                     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clickable { navController.navigate("detail/${item.id}/${item.isTv}") }, verticalAlignment = Alignment.CenterVertically) {
@@ -151,18 +208,35 @@ fun DetailScreen(id: Int, isTv: Boolean, navController: NavHostController) {
     var detail by remember { mutableStateOf<MediaDetail?>(null) }
     var episodes by remember { mutableStateOf<List<Episode>>(emptyList()) }
     var selectedSeason by remember { mutableStateOf(1) }
+    var hasError by remember { mutableStateOf(false) }
 
     LaunchedEffect(id) {
-        TmdbService.getDetails(id, isTv) { 
-            detail = it
-            if (isTv && it?.seasons?.isNotEmpty() == true) {
-                selectedSeason = it.seasons.first().number
-                TmdbService.getEpisodes(id, selectedSeason) { eps -> episodes = eps }
+        TmdbService.getDetails(id, isTv) { d ->
+            if (d == null) {
+                hasError = true
+            } else {
+                detail = d
+                if (isTv && d.seasons.isNotEmpty()) {
+                    selectedSeason = d.seasons.first().number
+                    TmdbService.getEpisodes(id, selectedSeason) { eps -> episodes = eps }
+                }
             }
         }
     }
 
-    if (detail == null) { Box(modifier = Modifier.fillMaxSize().background(Color(0xFF141414)), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Color.Red) }; return }
+    if (hasError) {
+        Box(modifier = Modifier.fillMaxSize().background(Color(0xFF141414)), contentAlignment = Alignment.Center) {
+            Text("Failed to load details. Check connection.", color = Color.Red)
+        }
+        return
+    }
+
+    if (detail == null) { 
+        Box(modifier = Modifier.fillMaxSize().background(Color(0xFF141414)), contentAlignment = Alignment.Center) { 
+            CircularProgressIndicator(color = Color.Red) 
+        } 
+        return 
+    }
 
     val d = detail!!
     LazyColumn(modifier = Modifier.fillMaxSize().background(Color(0xFF141414))) {
@@ -184,7 +258,7 @@ fun DetailScreen(id: Int, isTv: Boolean, navController: NavHostController) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("${d.year} · ⭐ ${String.format("%.1f", d.rating)}", color = Color.Gray)
                     Spacer(modifier = Modifier.height(16.dp))
-                    Button(onClick = { 
+                    Button(onClick = {
                         val intent = Intent(navController.context, PlayerActivity::class.java)
                         val url = if (isTv) "https://vixsrc.to/tv/$id/1/1" else "https://vixsrc.to/movie/$id"
                         intent.putExtra("EMBED_URL", url)
@@ -197,7 +271,6 @@ fun DetailScreen(id: Int, isTv: Boolean, navController: NavHostController) {
         }
         item { Text(d.overview, color = Color.White, modifier = Modifier.padding(horizontal = 16.dp)) }
         
-        // Cast
         if (d.cast.isNotEmpty()) {
             item { Spacer(modifier = Modifier.height(24.dp)); Text("Cast", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp)); Spacer(modifier = Modifier.height(8.dp)) }
             item {
@@ -212,7 +285,6 @@ fun DetailScreen(id: Int, isTv: Boolean, navController: NavHostController) {
             }
         }
 
-        // Seasons & Episodes for TV
         if (isTv && d.seasons.isNotEmpty()) {
             item {
                 Spacer(modifier = Modifier.height(24.dp))
