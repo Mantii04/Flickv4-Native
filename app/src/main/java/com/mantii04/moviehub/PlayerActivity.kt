@@ -37,7 +37,12 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.common.TrackSelectionOverride
+import androidx.media3.common.TrackSelectionParameters
+import androidx.media3.common.Tracks
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.AspectRatioFrameLayout
@@ -101,13 +106,17 @@ class PlayerActivity : ComponentActivity() {
         var showUpNext by remember { mutableStateOf(false) }
         var upNextCountdown by remember { mutableStateOf(10) }
         var upNextCancelled by remember { mutableStateOf(false) }
+        var selectedQuality by remember { mutableStateOf<Int?>(null) }
 
         LaunchedEffect(url) {
             if (exoPlayer == null) {
                 val trackSelector = DefaultTrackSelector(this@PlayerActivity).apply {
                     parameters = buildUponParameters()
                         .setMaxVideoSize(1920, 1080)
+                        .setMaxVideoBitrate(Int.MAX_VALUE)
                         .setForceHighestSupportedBitrate(true)
+                        .setAllowVideoMixedMimeTypeAdaptiveness(true)
+                        .setAllowVideoNonSeamlessAdaptiveness(true)
                         .build()
                 }
                 exoPlayer = ExoPlayer.Builder(this@PlayerActivity)
@@ -118,6 +127,39 @@ class PlayerActivity : ComponentActivity() {
                         playWhenReady = true
                         play()
                     }
+
+                // THE FIX: force 1080p the moment tracks are known
+                exoPlayer?.addListener(object : Player.Listener {
+                    override fun onTracksChanged(tracks: Tracks) {
+                        val videoGroups = tracks.groups.filter { it.type == C.TRACK_TYPE_VIDEO }
+                        if (videoGroups.isEmpty()) return
+                        var bestGroup: Tracks.Group? = null
+                        var bestHeight = 0
+                        var bestTrackIndex = 0
+                        for (group in videoGroups) {
+                            for (i in 0 until group.length) {
+                                val height = group.getTrackFormat(i).height ?: 0
+                                if (height > bestHeight) {
+                                    bestHeight = height
+                                    bestGroup = group
+                                    bestTrackIndex = i
+                                }
+                            }
+                        }
+                        bestGroup?.let { group ->
+                            try {
+                                val override = TrackSelectionOverride(group.mediaTrackGroup, bestTrackIndex)
+                                val params = (exoPlayer?.trackSelectionParameters
+                                    ?: TrackSelectionParameters.Builder(this@PlayerActivity).build())
+                                    .buildUpon()
+                                    .setOverrideForType(override)
+                                    .build()
+                                exoPlayer?.trackSelectionParameters = params
+                                selectedQuality = bestHeight
+                            } catch (_: Exception) {}
+                        }
+                    }
+                })
 
                 SubtitleService.fetchSubtitles(id, season, episode) { subtitles = it }
 
@@ -130,7 +172,6 @@ class PlayerActivity : ComponentActivity() {
                         if (position > 0) {
                             db.mediaDao().saveProgress(HistoryEntity(id, title, poster, isTv, position, duration))
                         }
-
                         if (nextTitle != null && !upNextCancelled && !showUpNext) {
                             val remaining = duration - position
                             if (remaining in 1..20000 && duration > 60000) {
@@ -144,13 +185,8 @@ class PlayerActivity : ComponentActivity() {
 
         LaunchedEffect(showUpNext, upNextCountdown) {
             if (showUpNext) {
-                if (upNextCountdown > 0) {
-                    delay(1000)
-                    upNextCountdown--
-                } else {
-                    // Auto-advance: close and let detail screen trigger next episode
-                    finish()
-                }
+                if (upNextCountdown > 0) { delay(1000); upNextCountdown-- }
+                else { finish() }
             }
         }
 
@@ -169,14 +205,10 @@ class PlayerActivity : ComponentActivity() {
                     detectTapGestures(
                         onTap = { controlsVisible = !controlsVisible },
                         onDoubleTap = { offset ->
-                            val screenWidth = size.width
-                            if (offset.x < screenWidth * 0.3) {
-                                exoPlayer?.seekTo((exoPlayer?.currentPosition ?: 0) - 10000)
-                            } else if (offset.x > screenWidth * 0.7) {
-                                exoPlayer?.seekTo((exoPlayer?.currentPosition ?: 0) + 10000)
-                            } else {
-                                if (isPlaying) exoPlayer?.pause() else exoPlayer?.play()
-                            }
+                            val w = size.width
+                            if (offset.x < w * 0.3) exoPlayer?.seekTo((exoPlayer?.currentPosition ?: 0) - 10000)
+                            else if (offset.x > w * 0.7) exoPlayer?.seekTo((exoPlayer?.currentPosition ?: 0) + 10000)
+                            else if (isPlaying) exoPlayer?.pause() else exoPlayer?.play()
                         }
                     )
                 }
@@ -186,7 +218,8 @@ class PlayerActivity : ComponentActivity() {
                     PlayerView(context).apply {
                         player = exoPlayer
                         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-                        resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
+                        // THE FIX: ZOOM fills the screen (crop edges, no distortion, no bars) — this is what Netflix/Flickv4 use
+                        resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                         keepScreenOn = true
                         useController = false
                     }
@@ -194,7 +227,6 @@ class PlayerActivity : ComponentActivity() {
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Up Next overlay
             if (showUpNext && nextTitle != null) {
                 Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.85f))) {
                     Column(
@@ -221,56 +253,36 @@ class PlayerActivity : ComponentActivity() {
                 }
             }
 
-            // Custom controls
             AnimatedVisibility(visible = controlsVisible && !showUpNext, modifier = Modifier.fillMaxSize()) {
                 Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f))) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = { finish() }) {
                             Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
                         }
                         Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).padding(start = 8.dp))
+                        if (selectedQuality != null) {
+                            Text("${selectedQuality}p", color = Color(0xFFE50914), fontSize = 12.sp, modifier = Modifier.padding(end = 8.dp))
+                        }
                         if (subtitles.isNotEmpty()) {
                             IconButton(onClick = { showSubtitleSheet = true }) {
-                                Icon(
-                                    Icons.Default.Subtitles,
-                                    contentDescription = "Subtitles",
-                                    tint = if (selectedSubtitle != null) Color(0xFFE50914) else Color.White
-                                )
+                                Icon(Icons.Default.Subtitles, contentDescription = "Subtitles", tint = if (selectedSubtitle != null) Color(0xFFE50914) else Color.White)
                             }
                         }
                     }
 
-                    Row(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalArrangement = Arrangement.spacedBy(32.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    Row(modifier = Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(32.dp), verticalAlignment = Alignment.CenterVertically) {
                         IconButton(
                             onClick = { exoPlayer?.seekTo((exoPlayer?.currentPosition ?: 0) - 10000) },
                             modifier = Modifier.size(56.dp).background(Color.Black.copy(alpha = 0.6f), CircleShape)
-                        ) {
-                            Icon(Icons.Default.Replay10, contentDescription = "-10s", tint = Color.White, modifier = Modifier.size(32.dp))
-                        }
+                        ) { Icon(Icons.Default.Replay10, contentDescription = "-10s", tint = Color.White, modifier = Modifier.size(32.dp)) }
                         IconButton(
                             onClick = { if (isPlaying) exoPlayer?.pause() else exoPlayer?.play() },
                             modifier = Modifier.size(80.dp).background(Color.Black.copy(alpha = 0.8f), CircleShape)
-                        ) {
-                            Icon(
-                                if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                contentDescription = "Play/Pause",
-                                tint = Color.White,
-                                modifier = Modifier.size(48.dp)
-                            )
-                        }
+                        ) { Icon(if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, contentDescription = "Play/Pause", tint = Color.White, modifier = Modifier.size(48.dp)) }
                         IconButton(
                             onClick = { exoPlayer?.seekTo((exoPlayer?.currentPosition ?: 0) + 10000) },
                             modifier = Modifier.size(56.dp).background(Color.Black.copy(alpha = 0.6f), CircleShape)
-                        ) {
-                            Icon(Icons.Default.Forward10, contentDescription = "+10s", tint = Color.White, modifier = Modifier.size(32.dp))
-                        }
+                        ) { Icon(Icons.Default.Forward10, contentDescription = "+10s", tint = Color.White, modifier = Modifier.size(32.dp)) }
                     }
 
                     Column(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(24.dp)) {
@@ -296,50 +308,35 @@ class PlayerActivity : ComponentActivity() {
                 }
             }
 
-            // Subtitle selector sheet — using clickable Rows instead of ListTile
             if (showSubtitleSheet) {
                 Box(
-                    modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.7f))
-                        .clickable { showSubtitleSheet = false },
+                    modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.7f)).clickable { showSubtitleSheet = false },
                     contentAlignment = Alignment.Center
                 ) {
                     Column(
-                        modifier = Modifier
-                            .fillMaxWidth(0.6f)
-                            .background(Color(0xFF141414), RoundedCornerShape(12.dp))
-                            .padding(16.dp)
+                        modifier = Modifier.fillMaxWidth(0.6f).background(Color(0xFF141414), RoundedCornerShape(12.dp)).padding(16.dp)
                     ) {
                         Text("Subtitles", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(12.dp))
                         LazyColumn {
                             item {
                                 Row(
-                                    modifier = Modifier.fillMaxWidth()
-                                        .clickable {
-                                            selectedSubtitle = null
-                                            showSubtitleSheet = false
-                                        }
-                                        .padding(vertical = 12.dp, horizontal = 4.dp),
+                                    modifier = Modifier.fillMaxWidth().clickable {
+                                        selectedSubtitle = null
+                                        showSubtitleSheet = false
+                                    }.padding(vertical = 12.dp, horizontal = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text("Off", color = Color.White, fontSize = 15.sp)
-                                }
+                                ) { Text("Off", color = Color.White, fontSize = 15.sp) }
                             }
                             items(subtitles) { sub ->
                                 Row(
-                                    modifier = Modifier.fillMaxWidth()
-                                        .clickable {
-                                            selectedSubtitle = sub
-                                            showSubtitleSheet = false
-                                        }
-                                        .padding(vertical = 12.dp, horizontal = 4.dp),
+                                    modifier = Modifier.fillMaxWidth().clickable {
+                                        selectedSubtitle = sub
+                                        showSubtitleSheet = false
+                                    }.padding(vertical = 12.dp, horizontal = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(
-                                        sub.label,
-                                        color = if (selectedSubtitle == sub) Color(0xFFE50914) else Color.White,
-                                        fontSize = 15.sp
-                                    )
+                                    Text(sub.label, color = if (selectedSubtitle == sub) Color(0xFFE50914) else Color.White, fontSize = 15.sp)
                                 }
                             }
                         }
