@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.*
 
@@ -30,16 +31,14 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun HomeScreen(navController: NavHostController) {
+    val context = LocalContext.current
     Column(modifier = Modifier.fillMaxSize().background(Color(0xFF141414))) {
         Text("Netflix Clone (Home)", color = Color.White, fontSize = 24.sp, modifier = Modifier.padding(16.dp))
         Spacer(modifier = Modifier.weight(1f))
-        
+
         Button(
-            onClick = { 
-                val intent = Intent(Intent.ACTION_VIEW)
-                // We will test the native player with Inception (TMDB: 27205)
-                val context = navController.context
-                intent.setClass(context, PlayerActivity::class.java)
+            onClick = {
+                val intent = Intent(context, PlayerActivity::class.java)
                 intent.putExtra("EMBED_URL", "https://vixsrc.to/movie/27205")
                 context.startActivity(intent)
             },

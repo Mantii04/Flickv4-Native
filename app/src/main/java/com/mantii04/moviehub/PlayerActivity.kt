@@ -2,6 +2,8 @@ package com.mantii04.moviehub
 
 import android.annotation.SuppressLint
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.ViewGroup
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -29,15 +31,13 @@ class PlayerActivity : ComponentActivity() {
 
         setContent {
             var streamUrl by remember { mutableStateOf<String?>(null) }
-            
+
             MaterialTheme(colorScheme = darkColorScheme(background = Color.Black)) {
                 if (streamUrl == null) {
-                    // Resolve Stream using WebView
                     WebViewResolver(embedUrl = embedUrl ?: "") { url ->
                         streamUrl = url
                     }
                 } else {
-                    // Play Stream using Native ExoPlayer
                     ExoPlayerView(url = streamUrl!!)
                 }
             }
@@ -52,7 +52,6 @@ class PlayerActivity : ComponentActivity() {
 
     @Composable
     fun ExoPlayerView(url: String) {
-        // Initialize ExoPlayer
         LaunchedEffect(url) {
             exoPlayer = ExoPlayer.Builder(this@PlayerActivity).build().apply {
                 setMediaItem(MediaItem.fromUri(url))
@@ -83,11 +82,13 @@ fun WebViewResolver(embedUrl: String, onStreamFound: (String) -> Unit) {
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
                 settings.userAgentString = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
+                
                 webViewClient = object : WebViewClient() {
                     override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): android.webkit.WebResourceResponse? {
                         val url = request?.url.toString()
                         if (url.contains(".m3u8") || url.contains(".mp4")) {
-                            context.runOnUiThread { onStreamFound(url) }
+                            // Send result back to main thread safely
+                            Handler(Looper.getMainLooper()).post { onStreamFound(url) }
                         }
                         return super.shouldInterceptRequest(view, request)
                     }
