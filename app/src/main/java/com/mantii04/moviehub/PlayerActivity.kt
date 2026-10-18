@@ -1,15 +1,7 @@
 package com.mantii04.moviehub
 
-import android.annotation.SuppressLint
 import android.content.pm.ActivityInfo
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.view.ViewGroup
-import android.webkit.WebResourceRequest
-import android.webkit.WebResourceResponse
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
@@ -17,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -27,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -42,7 +36,6 @@ import androidx.media3.common.Tracks
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.hls.HlsMediaSource
-import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
@@ -60,71 +53,53 @@ class PlayerActivity : ComponentActivity() {
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
 
-        val embedUrl = intent.getStringExtra("EMBED_URL") ?: ""
         val id = intent.getIntExtra("ID", 0)
         val title = intent.getStringExtra("TITLE") ?: ""
         val poster = intent.getStringExtra("POSTER") ?: ""
         val isTv = intent.getBooleanExtra("IS_TV", false)
+        val season = intent.getIntExtra("SEASON", 0).takeIf { it > 0 }
+        val episode = intent.getIntExtra("EPISODE", 0).takeIf { it > 0 }
 
         setContent {
             var streamUrl by remember { mutableStateOf<String?>(null) }
-            var timeout by remember { mutableStateOf(false) }
-            var debugUrls by remember { mutableStateOf(0) }
+            var errorMsg by remember { mutableStateOf<String?>(null) }
             val context = LocalContext.current
             val db = AppDatabase.getDatabase(context)
 
-            LaunchedEffect(Unit) {
-                delay(25000) // 25 second timeout
-                if (streamUrl == null) timeout = true
+            LaunchedEffect(id) {
+                VidRockResolver.resolve(id, isTv, season, episode) { url, err ->
+                    if (url != null) streamUrl = url else errorMsg = err ?: "Unknown error"
+                }
             }
 
             MaterialTheme(colorScheme = darkColorScheme(primary = Color(0xFFE50914), background = Color.Black)) {
-                if (streamUrl == null) {
-                    Box(modifier = Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
-                        AndroidView(
-                            factory = { ctx ->
-                                WebView(ctx).apply {
-                                    alpha = 0f // Hide the WebView
-                                    layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-                                    settings.javaScriptEnabled = true
-                                    settings.domStorageEnabled = true
-                                    settings.mediaPlaybackRequiresUserGesture = false
-                                    settings.userAgentString = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
-
-                                    webViewClient = object : WebViewClient() {
-                                        override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
-                                            val u = request?.url?.toString() ?: return super.shouldInterceptRequest(view, request)
-                                            if (u.contains(".m3u8") || u.contains(".mp4")) {
-                                                Handler(Looper.getMainLooper()).post { 
-                                                    if (streamUrl == null) {
-                                                        streamUrl = u
-                                                    }
-                                                }
-                                            }
-                                            return super.shouldInterceptRequest(view, request)
-                                        }
-                                        override fun onPageFinished(view: WebView?, url: String?) {
-                                            super.onPageFinished(view, url)
-                                            view?.evaluateJavascript(MUTE_SCRIPT, null)
-                                        }
-                                    }
-                                    loadUrl(embedUrl)
-                                }
-                            },
-                            modifier = Modifier.fillMaxSize()
-                        )
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(color = Color(0xFFE50914), strokeWidth = 3.dp)
-                            Spacer(modifier = Modifier.height(20.dp))
-                            Text(if (timeout) "Timed out. Tap Cancel." else "Resolving VidRock stream…", color = Color.White, fontSize = 15.sp)
-                            if (timeout) {
-                                Spacer(modifier = Modifier.height(16.dp))
-                                OutlinedButton(onClick = { finish() }) { Text("Cancel") }
-                            }
+                when {
+                    streamUrl != null -> ExoPlayerView(
+                        url = streamUrl!!, id = id, title = title,
+                        poster = poster, isTv = isTv, db = db
+                    )
+                    errorMsg != null -> Box(
+                        modifier = Modifier.fillMaxSize().background(Color.Black),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp)) {
+                            Text("Playback error", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(errorMsg!!, color = Color.Yellow, fontSize = 12.sp, textAlign = TextAlign.Center)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(onClick = { finish() }) { Text("Back") }
                         }
                     }
-                } else {
-                    ExoPlayerView(url = streamUrl!!, id = id, title = title, poster = poster, isTv = isTv, db = db)
+                    else -> Box(
+                        modifier = Modifier.fillMaxSize().background(Color.Black),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(color = Color(0xFFE50914))
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text("Decrypting VidRock stream…", color = Color.White, fontSize = 14.sp)
+                        }
+                    }
                 }
             }
         }
@@ -144,21 +119,14 @@ class PlayerActivity : ComponentActivity() {
         LaunchedEffect(url) {
             if (exoPlayer == null) {
                 val trackSelector = DefaultTrackSelector(this@PlayerActivity)
-                
-                // VidRock CDN headers (Referer is the iframe URL)
                 val dataSourceFactory = DefaultHttpDataSource.Factory()
                     .setDefaultRequestProperties(mapOf(
-                        "Referer" to "https://vidrock.net/",
-                        "Origin" to "https://vidrock.net",
-                        "User-Agent" to "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36"
+                        "User-Agent" to "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36",
+                        "Referer" to "https://vidrock.net/"
                     ))
 
                 val mediaItem = MediaItem.fromUri(url)
-                val mediaSource = if (url.contains(".m3u8")) {
-                    HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
-                } else {
-                    ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
-                }
+                val mediaSource = HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
 
                 val player = ExoPlayer.Builder(this@PlayerActivity).setTrackSelector(trackSelector).build()
                 player.setMediaSource(mediaSource)
@@ -269,7 +237,7 @@ class PlayerActivity : ComponentActivity() {
                     }
                     if (playError != null) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp).background(Color.Black.copy(alpha = 0.85f), androidx.compose.foundation.shape.RoundedCornerShape(8.dp)).padding(16.dp)) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp).background(Color.Black.copy(alpha = 0.85f), RoundedCornerShape(8.dp)).padding(16.dp)) {
                                 Text("Playback error", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(playError!!, color = Color.Yellow, fontSize = 12.sp)
@@ -283,22 +251,3 @@ class PlayerActivity : ComponentActivity() {
         }
     }
 }
-
-private const val MUTE_SCRIPT = """
-(function() {
-  try {
-    var vd = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'volume');
-    if (vd && vd.set) {
-      Object.defineProperty(HTMLMediaElement.prototype, 'volume', {
-        get: function() { return 0; },
-        set: function() {}
-      });
-    }
-    function mute() {
-      try { document.querySelectorAll('video,audio').forEach(function(el) { el.muted = true; el.volume = 0; }); } catch(e) {}
-    }
-    mute();
-    setInterval(mute, 300);
-  } catch(e) {}
-})();
-"""
