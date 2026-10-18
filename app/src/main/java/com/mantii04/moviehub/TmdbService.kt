@@ -36,7 +36,17 @@ object TmdbService {
 
     fun getTrending(onResult: (List<MediaItem>) -> Unit) = fetch("/trending/all/day") { onResult(parseResults(it)) }
     fun getPopularMovies(onResult: (List<MediaItem>) -> Unit) = fetch("/movie/popular") { onResult(parseResults(it)) }
-    fun getPopularTv(onResult: (List<MediaItem>) -> Unit) = fetch("/tv/popular") { onResult(parseResults(it)) }
+    
+    fun search(query: String, onResult: (List<MediaItem>) -> Unit) {
+        val encodedQuery = java.net.URLEncoder.encode(query, "UTF-8")
+        fetch("/search/multi?query=$encodedQuery") { onResult(parseResults(it)) }
+    }
+
+    fun getMovieDetails(id: Int, onResult: (String) -> Unit) {
+        fetch("/movie/$id") { json ->
+            onResult(json?.optString("overview") ?: "No synopsis available.")
+        }
+    }
 
     private fun parseResults(json: JSONObject?): List<MediaItem> {
         val list = mutableListOf<MediaItem>()

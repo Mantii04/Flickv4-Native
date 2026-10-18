@@ -5,6 +5,8 @@ import android.content.pm.ActivityInfo
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.GestureDetector
+import android.view.MotionEvent
 import android.view.ViewGroup
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -12,14 +14,12 @@ import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -34,7 +34,7 @@ class PlayerActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         WindowCompat.setDecorFitsSystemWindows(window, false)
         WindowInsetsControllerCompat(window, window.decorView).apply {
@@ -67,50 +67,49 @@ class PlayerActivity : ComponentActivity() {
 
     @Composable
     fun ExoPlayerView(url: String) {
-        LaunchedEffect(url) {
-            exoPlayer = ExoPlayer.Builder(this@PlayerActivity).build().apply {
-                setMediaItem(MediaItem.fromUri(url))
-                prepare()
-                playWhenReady = true
-                play()
-            }
-        }
-
         AndroidView(
             factory = { context ->
+                if (exoPlayer == null) {
+                    exoPlayer = ExoPlayer.Builder(context).build().apply {
+                        setMediaItem(MediaItem.fromUri(url))
+                        prepare()
+                        playWhenReady = true
+                        play()
+                    }
+                }
+
+                val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+                    override fun onDoubleTap(e: MotionEvent): Boolean {
+                        val screenWidth = e.x
+                        if (screenWidth < context.resources.displayMetrics.widthPixels * 0.3) {
+                            exoPlayer?.seekTo((exoPlayer?.currentPosition ?: 0) - 10000)
+                        } else if (screenWidth > context.resources.displayMetrics.widthPixels * 0.7) {
+                            exoPlayer?.seekTo((exoPlayer?.currentPosition ?: 0) + 10000)
+                        }
+                        return true
+                    }
+                })
+
                 PlayerView(context).apply {
                     player = exoPlayer
                     layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-                    
-                    // THIS FIXES THE BLACK BARS: Stretches to fill completely
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
-                    
                     keepScreenOn = true
-                    
-                    // Turn on modern controls (pause, seek, subtitles)
                     useController = true
                     controllerShowTimeoutMs = 3000
-                    setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING)
+                    
+                    setOnTouchListener { _, event ->
+                        gestureDetector.onTouchEvent(event)
+                        false 
+                    }
                 }
             },
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black)
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onDoubleTap = { offset ->
-                            val screenWidth = size.width
-                            val pos = offset.x
-                            if (pos < screenWidth * 0.3) {
-                                // Left side: Rewind 10s
-                                exoPlayer?.seekTo((exoPlayer?.currentPosition ?: 0) - 10000)
-                            } else if (pos > screenWidth * 0.7) {
-                                // Right side: Forward 10s
-                                exoPlayer?.seekTo((exoPlayer?.currentPosition ?: 0) + 10000)
-                            }
-                        }
-                    )
-                }
+            update = { view ->
+                view.player = exoPlayer
+                exoPlayer?.playWhenReady = true
+                exoPlayer?.play()
+            },
+            modifier = Modifier.fillMaxSize().background(Color.Black)
         )
     }
 }
