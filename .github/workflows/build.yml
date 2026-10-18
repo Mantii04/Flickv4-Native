@@ -19,12 +19,11 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: 8.2.2
 
       - name: Build Release APK
-        run: |
-          chmod +x gradlew || true
-          gradle wrapper
-          ./gradlew assembleRelease
+        run: gradle assembleRelease
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
