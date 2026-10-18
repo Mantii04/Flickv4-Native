@@ -14,13 +14,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -43,7 +39,10 @@ import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.TrackSelectionParameters
 import androidx.media3.common.Tracks
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.hls.HlsMediaSource
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
@@ -84,22 +83,28 @@ class PlayerActivity : ComponentActivity() {
                         AndroidView(
                             factory = { ctx ->
                                 WebView(ctx).apply {
-                                    alpha = 0f
+                                    alpha = 0f // Hide it completely
                                     layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
                                     settings.javaScriptEnabled = true
                                     settings.domStorageEnabled = true
                                     settings.mediaPlaybackRequiresUserGesture = false
                                     settings.userAgentString = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
+                                    
                                     addJavascriptInterface(object {
                                         @android.webkit.JavascriptInterface
                                         fun report(u: String) {
-                                            if (u.contains(".m3u8") || u.contains(".mp4")) Handler(Looper.getMainLooper()).post { streamUrl = u }
+                                            if (isValidVideoUrl(u)) {
+                                                Handler(Looper.getMainLooper()).post { streamUrl = u }
+                                            }
                                         }
                                     }, "AndroidBridge")
+                                    
                                     webViewClient = object : WebViewClient() {
                                         override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
                                             val u = request?.url?.toString() ?: return super.shouldInterceptRequest(view, request)
-                                            if (u.contains(".m3u8") || u.contains(".mp4")) Handler(Looper.getMainLooper()).post { streamUrl = u }
+                                            if (isValidVideoUrl(u)) {
+                                                Handler(Looper.getMainLooper()).post { streamUrl = u }
+                                            }
                                             return super.shouldInterceptRequest(view, request)
                                         }
                                         override fun onPageFinished(view: WebView?, url: String?) {
@@ -129,6 +134,13 @@ class PlayerActivity : ComponentActivity() {
         }
     }
 
+    private fun isValidVideoUrl(url: String): Boolean {
+        // Must be m3u8 or mp4. Must NOT be audio-only.
+        if (!url.contains(".m3u8") && !url.contains(".mp4")) return false
+        if (url.contains("audio") || url.contains("subtitle")) return false
+        return true
+    }
+
     override fun onDestroy() { exoPlayer?.release(); exoPlayer = null; super.onDestroy() }
 
     @Composable
@@ -138,8 +150,6 @@ class PlayerActivity : ComponentActivity() {
         var duration by remember { mutableStateOf(1L) }
         var controlsVisible by remember { mutableStateOf(true) }
         var selectedQuality by remember { mutableStateOf<Int?>(null) }
-        var subtitles by remember { mutableStateOf<List<Subtitle>>(emptyList()) }
-        var showSubtitleSheet by remember { mutableStateOf(false) }
 
         LaunchedEffect(url) {
             if (exoPlayer == null) {
@@ -149,8 +159,27 @@ class PlayerActivity : ComponentActivity() {
                         .setForceHighestSupportedBitrate(true)
                         .build()
                 }
-                val player = ExoPlayer.Builder(this@PlayerActivity).setTrackSelector(trackSelector).build()
-                player.setMediaItem(MediaItem.fromUri(url))
+                
+                // CRITICAL FIX: Send Referer/Origin headers so the CDN allows video chunks
+                val dataSourceFactory = DefaultHttpDataSource.Factory()
+                    .setDefaultRequestProperties(mapOf(
+                        "Referer" to "https://vixsrc.to/",
+                        "Origin" to "https://vixsrc.to",
+                        "User-Agent" to "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36"
+                    ))
+
+                val mediaItem = MediaItem.fromUri(url)
+                val mediaSource = if (url.contains(".m3u8")) {
+                    HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
+                } else {
+                    ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
+                }
+
+                val player = ExoPlayer.Builder(this@PlayerActivity)
+                    .setTrackSelector(trackSelector)
+                    .build()
+                
+                player.setMediaSource(mediaSource)
                 player.prepare()
                 player.playWhenReady = true
                 player.play()
@@ -169,25 +198,24 @@ class PlayerActivity : ComponentActivity() {
                         for (group in videoGroups) {
                             for (i in 0 until group.length) {
                                 val h = group.getTrackFormat(i).height ?: 0
-                                val takeIt = when {
-                                    h > 1080 -> bestHeight > 1080 && h < bestHeight
-                                    else -> h > bestHeight
+                                if (h > bestHeight) {
+                                    bestHeight = h
+                                    bestGroup = group
+                                    bestTrackIndex = i
                                 }
-                                if (takeIt) { bestHeight = h; bestGroup = group; bestTrackIndex = i }
                             }
                         }
                         bestGroup?.let { group ->
                             try {
                                 val override = TrackSelectionOverride(group.mediaTrackGroup, bestTrackIndex)
-                                val params = (player.trackSelectionParameters ?: TrackSelectionParameters.Builder(this@PlayerActivity).build()).buildUpon().setOverrideForType(override).build()
+                                val params = (player.trackSelectionParameters ?: TrackSelectionParameters.Builder(this@PlayerActivity).build())
+                                    .buildUpon().setOverrideForType(override).build()
                                 player.trackSelectionParameters = params
                                 selectedQuality = bestHeight
                             } catch (_: Exception) {}
                         }
                     }
                 })
-
-                SubtitleService.fetchSubtitles(id, null, null) { subtitles = it }
 
                 while (true) {
                     delay(1000)
@@ -233,7 +261,6 @@ class PlayerActivity : ComponentActivity() {
                         IconButton(onClick = { finish() }) { Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White) }
                         Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).padding(start = 8.dp))
                         if (selectedQuality != null) Text("${selectedQuality}p", color = Color(0xFFE50914), fontSize = 12.sp, modifier = Modifier.padding(end = 8.dp))
-                        if (subtitles.isNotEmpty()) IconButton(onClick = { showSubtitleSheet = true }) { Icon(Icons.Default.Subtitles, contentDescription = "Subs", tint = Color.White) }
                     }
                     Row(modifier = Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(32.dp), verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = { exoPlayer?.seekTo((exoPlayer?.currentPosition ?: 0) - 10000) }, modifier = Modifier.size(56.dp).background(Color.Black.copy(alpha = 0.6f), CircleShape)) { Icon(Icons.Default.Replay10, contentDescription = "-10s", tint = Color.White, modifier = Modifier.size(32.dp)) }
