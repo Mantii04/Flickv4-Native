@@ -531,7 +531,7 @@ fun DetailScreen(id: Int, isTv: Boolean, navController: NavHostController, db: A
                     Button(
                         onClick = {
                             val intent = Intent(navController.context, PlayerActivity::class.java)
-                            val url = if (isTv) "https://vixsrc.to/tv/$id/1/1" else "https://vixsrc.to/movie/$id"
+                            val url = if (isTv) "https://vidrock.net/tv/$id/1/1?autoplay=true&download=false&theme=e50914" else "https://vidrock.net/movie/$id?autoplay=true&download=false&theme=e50914"
                             intent.putExtra("EMBED_URL", url)
                             intent.putExtra("ID", id)
                             intent.putExtra("TITLE", d.title)
@@ -594,7 +594,7 @@ fun DetailScreen(id: Int, isTv: Boolean, navController: NavHostController, db: A
             items(episodes) { ep ->
                 Row(modifier = Modifier.fillMaxWidth().clickable {
                     val intent = Intent(navController.context, PlayerActivity::class.java)
-                    intent.putExtra("EMBED_URL", "https://vixsrc.to/tv/$id/$selectedSeason/${ep.epNum}")
+                    intent.putExtra("EMBED_URL", "https://vidrock.net/tv/$id/$selectedSeason/${ep.epNum}?autoplay=true&download=false&theme=e50914")
                     intent.putExtra("ID", id); intent.putExtra("TITLE", "${d.title} S${selectedSeason}E${ep.epNum}"); intent.putExtra("POSTER", d.posterPath); intent.putExtra("IS_TV", true)
                     navController.context.startActivity(intent)
                 }.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {

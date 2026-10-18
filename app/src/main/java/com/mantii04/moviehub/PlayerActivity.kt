@@ -69,11 +69,12 @@ class PlayerActivity : ComponentActivity() {
         setContent {
             var streamUrl by remember { mutableStateOf<String?>(null) }
             var timeout by remember { mutableStateOf(false) }
+            var debugUrls by remember { mutableStateOf(0) }
             val context = LocalContext.current
             val db = AppDatabase.getDatabase(context)
 
             LaunchedEffect(Unit) {
-                delay(20000)
+                delay(25000) // 25 second timeout
                 if (streamUrl == null) timeout = true
             }
 
@@ -83,33 +84,28 @@ class PlayerActivity : ComponentActivity() {
                         AndroidView(
                             factory = { ctx ->
                                 WebView(ctx).apply {
-                                    alpha = 0f // Hide it completely
+                                    alpha = 0f // Hide the WebView
                                     layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
                                     settings.javaScriptEnabled = true
                                     settings.domStorageEnabled = true
                                     settings.mediaPlaybackRequiresUserGesture = false
                                     settings.userAgentString = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
-                                    
-                                    addJavascriptInterface(object {
-                                        @android.webkit.JavascriptInterface
-                                        fun report(u: String) {
-                                            if (isValidVideoUrl(u)) {
-                                                Handler(Looper.getMainLooper()).post { streamUrl = u }
-                                            }
-                                        }
-                                    }, "AndroidBridge")
-                                    
+
                                     webViewClient = object : WebViewClient() {
                                         override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
                                             val u = request?.url?.toString() ?: return super.shouldInterceptRequest(view, request)
-                                            if (isValidVideoUrl(u)) {
-                                                Handler(Looper.getMainLooper()).post { streamUrl = u }
+                                            if (u.contains(".m3u8") || u.contains(".mp4")) {
+                                                Handler(Looper.getMainLooper()).post { 
+                                                    if (streamUrl == null) {
+                                                        streamUrl = u
+                                                    }
+                                                }
                                             }
                                             return super.shouldInterceptRequest(view, request)
                                         }
                                         override fun onPageFinished(view: WebView?, url: String?) {
                                             super.onPageFinished(view, url)
-                                            view?.evaluateJavascript(SCRIPT, null)
+                                            view?.evaluateJavascript(MUTE_SCRIPT, null)
                                         }
                                     }
                                     loadUrl(embedUrl)
@@ -120,7 +116,7 @@ class PlayerActivity : ComponentActivity() {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             CircularProgressIndicator(color = Color(0xFFE50914), strokeWidth = 3.dp)
                             Spacer(modifier = Modifier.height(20.dp))
-                            Text(if (timeout) "Still resolving… tap Cancel" else "Finding stream…", color = Color.White, fontSize = 15.sp)
+                            Text(if (timeout) "Timed out. Tap Cancel." else "Resolving VidRock stream…", color = Color.White, fontSize = 15.sp)
                             if (timeout) {
                                 Spacer(modifier = Modifier.height(16.dp))
                                 OutlinedButton(onClick = { finish() }) { Text("Cancel") }
@@ -134,13 +130,6 @@ class PlayerActivity : ComponentActivity() {
         }
     }
 
-    private fun isValidVideoUrl(url: String): Boolean {
-        // Must be m3u8 or mp4. Must NOT be audio-only.
-        if (!url.contains(".m3u8") && !url.contains(".mp4")) return false
-        if (url.contains("audio") || url.contains("subtitle")) return false
-        return true
-    }
-
     override fun onDestroy() { exoPlayer?.release(); exoPlayer = null; super.onDestroy() }
 
     @Composable
@@ -149,21 +138,18 @@ class PlayerActivity : ComponentActivity() {
         var position by remember { mutableStateOf(0L) }
         var duration by remember { mutableStateOf(1L) }
         var controlsVisible by remember { mutableStateOf(true) }
-        var selectedQuality by remember { mutableStateOf<Int?>(null) }
-        var videoWidth by remember { mutableStateOf(0) }
         var videoHeight by remember { mutableStateOf(0) }
         var playError by remember { mutableStateOf<String?>(null) }
 
         LaunchedEffect(url) {
             if (exoPlayer == null) {
-                // No max-size filter — let ExoPlayer choose from what the CDN serves
                 val trackSelector = DefaultTrackSelector(this@PlayerActivity)
                 
-                // CRITICAL FIX: Send Referer/Origin headers so the CDN allows video chunks
+                // VidRock CDN headers (Referer is the iframe URL)
                 val dataSourceFactory = DefaultHttpDataSource.Factory()
                     .setDefaultRequestProperties(mapOf(
-                        "Referer" to "https://vixsrc.to/",
-                        "Origin" to "https://vixsrc.to",
+                        "Referer" to "https://vidrock.net/",
+                        "Origin" to "https://vidrock.net",
                         "User-Agent" to "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36"
                     ))
 
@@ -174,10 +160,7 @@ class PlayerActivity : ComponentActivity() {
                     ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
                 }
 
-                val player = ExoPlayer.Builder(this@PlayerActivity)
-                    .setTrackSelector(trackSelector)
-                    .build()
-                
+                val player = ExoPlayer.Builder(this@PlayerActivity).setTrackSelector(trackSelector).build()
                 player.setMediaSource(mediaSource)
                 player.prepare()
                 player.playWhenReady = true
@@ -189,36 +172,21 @@ class PlayerActivity : ComponentActivity() {
                         if (state == Player.STATE_READY) player.play()
                     }
                     override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                        playError = error.errorCodeName + ": " + (error.message ?: "unknown")
+                        playError = error.errorCodeName
                     }
                     override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
-                        videoWidth = videoSize.width
                         videoHeight = videoSize.height
                     }
                     override fun onTracksChanged(tracks: Tracks) {
                         val videoGroups = tracks.groups.filter { it.type == C.TRACK_TYPE_VIDEO }
-                        if (videoGroups.isEmpty()) {
-                            playError = "No video track found (audio only)"
-                            return
-                        }
+                        if (videoGroups.isEmpty()) return
                         var bestGroup: Tracks.Group? = null
                         var bestHeight = 0
                         var bestTrackIndex = 0
                         for (group in videoGroups) {
                             for (i in 0 until group.length) {
                                 val h = group.getTrackFormat(i).height ?: 0
-                                // Prefer 1080p; if unavailable, take the largest
-                                val takeIt = if (bestHeight in 900..1080) {
-                                    // Already have 1080-ish, only take closer to 1080
-                                    h > bestHeight && h <= 1080
-                                } else {
-                                    h > bestHeight
-                                }
-                                if (takeIt) {
-                                    bestHeight = h
-                                    bestGroup = group
-                                    bestTrackIndex = i
-                                }
+                                if (h > bestHeight) { bestHeight = h; bestGroup = group; bestTrackIndex = i }
                             }
                         }
                         bestGroup?.let { group ->
@@ -227,10 +195,7 @@ class PlayerActivity : ComponentActivity() {
                                 val params = (player.trackSelectionParameters ?: TrackSelectionParameters.Builder(this@PlayerActivity).build())
                                     .buildUpon().setOverrideForType(override).build()
                                 player.trackSelectionParameters = params
-                                selectedQuality = bestHeight
-                            } catch (e: Exception) {
-                                playError = "Track select failed: " + e.message
-                            }
+                            } catch (_: Exception) {}
                         }
                     }
                 })
@@ -281,27 +246,13 @@ class PlayerActivity : ComponentActivity() {
                         Text(
                             when {
                                 playError != null -> "ERR"
-                                selectedQuality != null -> "${selectedQuality}p"
-                                videoWidth > 0 -> "${videoWidth}x${videoHeight}"
+                                videoHeight > 0 -> "${videoHeight}p"
                                 else -> "..."
                             },
                             color = if (playError != null) Color.Yellow else Color(0xFFE50914),
                             fontSize = 12.sp,
                             modifier = Modifier.padding(end = 8.dp)
                         )
-                    }
-                    if (playError != null) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp).background(Color.Black.copy(alpha = 0.85f), androidx.compose.foundation.shape.RoundedCornerShape(8.dp)).padding(16.dp)) {
-                                Text("Playback error", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(playError!!, color = Color.Yellow, fontSize = 12.sp)
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Button(onClick = { finish() }) { Text("Back") }
-                                }
-                            }
-                        }
                     }
                     Row(modifier = Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(32.dp), verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = { exoPlayer?.seekTo((exoPlayer?.currentPosition ?: 0) - 10000) }, modifier = Modifier.size(56.dp).background(Color.Black.copy(alpha = 0.6f), CircleShape)) { Icon(Icons.Default.Replay10, contentDescription = "-10s", tint = Color.White, modifier = Modifier.size(32.dp)) }
@@ -316,23 +267,38 @@ class PlayerActivity : ComponentActivity() {
                             Text(String.format("%02d:%02d", dM, dS), color = Color.Gray, fontSize = 12.sp)
                         }
                     }
+                    if (playError != null) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp).background(Color.Black.copy(alpha = 0.85f), androidx.compose.foundation.shape.RoundedCornerShape(8.dp)).padding(16.dp)) {
+                                Text("Playback error", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(playError!!, color = Color.Yellow, fontSize = 12.sp)
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Button(onClick = { finish() }) { Text("Back") }
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 }
 
-private const val SCRIPT = """
+private const val MUTE_SCRIPT = """
 (function() {
-  if (window.__fl_hooked) return;
-  window.__fl_hooked = true;
-  function report(u) {
-    try { if (u && typeof u === 'string' && (u.indexOf('.m3u8') >= 0 || u.indexOf('.mp4') >= 0)) { if (window.AndroidBridge) window.AndroidBridge.report(u); } } catch(e) {}
-  }
-  var of = window.fetch;
-  if (of) window.fetch = function() { try { var a = arguments[0]; report(typeof a === 'string' ? a : (a && a.url)); } catch(e) {} return of.apply(this, arguments); };
-  var oo = XMLHttpRequest.prototype.open;
-  XMLHttpRequest.prototype.open = function(m, u) { try { report(u); } catch(e) {} return oo.apply(this, arguments); };
-  setInterval(function() { try { document.querySelectorAll('video').forEach(function(v) { var src = v.currentSrc || v.src; if (src) report(src); }); } catch(e) {} }, 500);
+  try {
+    var vd = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'volume');
+    if (vd && vd.set) {
+      Object.defineProperty(HTMLMediaElement.prototype, 'volume', {
+        get: function() { return 0; },
+        set: function() {}
+      });
+    }
+    function mute() {
+      try { document.querySelectorAll('video,audio').forEach(function(el) { el.muted = true; el.volume = 0; }); } catch(e) {}
+    }
+    mute();
+    setInterval(mute, 300);
+  } catch(e) {}
 })();
 """
