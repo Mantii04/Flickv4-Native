@@ -12,12 +12,14 @@ import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -33,10 +35,7 @@ class PlayerActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // 1. Force Landscape
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-        
-        // 2. Immersive Fullscreen (Hide Status & Navigation Bars)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         WindowInsetsControllerCompat(window, window.decorView).apply {
             hide(WindowInsetsCompat.Type.systemBars())
@@ -73,7 +72,7 @@ class PlayerActivity : ComponentActivity() {
                 setMediaItem(MediaItem.fromUri(url))
                 prepare()
                 playWhenReady = true
-                play() // Force auto-play immediately
+                play()
             }
         }
 
@@ -83,17 +82,35 @@ class PlayerActivity : ComponentActivity() {
                     player = exoPlayer
                     layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
                     
-                    // 3. Fill the screen (crop edges if necessary, like Netflix)
-                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                    // THIS FIXES THE BLACK BARS: Stretches to fill completely
+                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
                     
-                    // Keep screen awake
                     keepScreenOn = true
                     
-                    // Disable default controller overlay so video plays instantly
-                    useController = false 
+                    // Turn on modern controls (pause, seek, subtitles)
+                    useController = true
+                    controllerShowTimeoutMs = 3000
+                    setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING)
                 }
             },
-            modifier = Modifier.fillMaxSize().background(Color.Black)
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onDoubleTap = { offset ->
+                            val screenWidth = size.width
+                            val pos = offset.x
+                            if (pos < screenWidth * 0.3) {
+                                // Left side: Rewind 10s
+                                exoPlayer?.seekTo((exoPlayer?.currentPosition ?: 0) - 10000)
+                            } else if (pos > screenWidth * 0.7) {
+                                // Right side: Forward 10s
+                                exoPlayer?.seekTo((exoPlayer?.currentPosition ?: 0) + 10000)
+                            }
+                        }
+                    )
+                }
         )
     }
 }
