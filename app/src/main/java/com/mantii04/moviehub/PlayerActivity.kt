@@ -1,6 +1,7 @@
 package com.mantii04.moviehub
 
 import android.annotation.SuppressLint
+import android.content.pm.ActivityInfo
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -18,8 +19,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 
 class PlayerActivity : ComponentActivity() {
@@ -27,6 +32,17 @@ class PlayerActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // 1. Force Landscape
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        
+        // 2. Immersive Fullscreen (Hide Status & Navigation Bars)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            hide(WindowInsetsCompat.Type.systemBars())
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
+
         val embedUrl = intent.getStringExtra("EMBED_URL")
 
         setContent {
@@ -57,6 +73,7 @@ class PlayerActivity : ComponentActivity() {
                 setMediaItem(MediaItem.fromUri(url))
                 prepare()
                 playWhenReady = true
+                play() // Force auto-play immediately
             }
         }
 
@@ -65,6 +82,15 @@ class PlayerActivity : ComponentActivity() {
                 PlayerView(context).apply {
                     player = exoPlayer
                     layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+                    
+                    // 3. Fill the screen (crop edges if necessary, like Netflix)
+                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                    
+                    // Keep screen awake
+                    keepScreenOn = true
+                    
+                    // Disable default controller overlay so video plays instantly
+                    useController = false 
                 }
             },
             modifier = Modifier.fillMaxSize().background(Color.Black)
@@ -82,12 +108,11 @@ fun WebViewResolver(embedUrl: String, onStreamFound: (String) -> Unit) {
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
                 settings.userAgentString = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
-                
+
                 webViewClient = object : WebViewClient() {
                     override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): android.webkit.WebResourceResponse? {
                         val url = request?.url.toString()
                         if (url.contains(".m3u8") || url.contains(".mp4")) {
-                            // Send result back to main thread safely
                             Handler(Looper.getMainLooper()).post { onStreamFound(url) }
                         }
                         return super.shouldInterceptRequest(view, request)
