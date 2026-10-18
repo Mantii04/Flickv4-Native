@@ -38,7 +38,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -120,8 +120,11 @@ fun HomeScreen(navController: NavHostController, db: AppDatabase) {
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val heroHeight = screenHeight * 0.65f // Flickv4 uses 60-65%
-    val scrollState = rememberScrollState()
-    val headerProgress by animateFloatAsState(targetValue = (scrollState.value / 200f).coerceIn(0f, 1f), label = "header")
+    val listState = rememberLazyListState()
+    val headerProgress by animateFloatAsState(
+        targetValue = (listState.firstVisibleItemScrollOffset / 200f).coerceIn(0f, 1f),
+        label = "header"
+    )
 
     LaunchedEffect(Unit) {
         TmdbService.getTrending { trending = it }
@@ -140,7 +143,7 @@ fun HomeScreen(navController: NavHostController, db: AppDatabase) {
 
     Box(modifier = Modifier.fillMaxSize().background(NfBlack)) {
         LazyColumn(
-            state = androidx.compose.foundation.rememberScrollState().let { scrollState },
+            state = listState,
             modifier = Modifier.fillMaxSize()
         ) {
             // 1. Hero Carousel
