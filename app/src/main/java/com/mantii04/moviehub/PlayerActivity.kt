@@ -35,8 +35,10 @@ import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.TrackSelectionParameters
 import androidx.media3.common.Tracks
-import androidx.media3.datasource.DefaultHttpDataSource
+
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.datasource.okhttp.OkHttpDataSource
+import okhttp3.OkHttpClient
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.AspectRatioFrameLayout
@@ -129,10 +131,16 @@ class PlayerActivity : ComponentActivity() {
             }
             if (exoPlayer == null) {
                 val trackSelector = DefaultTrackSelector(this@PlayerActivity)
-                val dataSourceFactory = DefaultHttpDataSource.Factory()
+                val httpClient = OkHttpClient.Builder()
+                    .followRedirects(true)
+                    .followSslRedirects(true)
+                    .build()
+
+                val dataSourceFactory = OkHttpDataSource.Factory(httpClient)
                     .setDefaultRequestProperties(mapOf(
                         "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-                        "Referer" to "https://player.videasy.to/" // Set for Videasy CDN
+                        "Referer" to "https://player.videasy.to/",
+                        "Origin" to "https://player.videasy.to"
                     ))
 
                 // Build MediaItem with Subtitles if available
