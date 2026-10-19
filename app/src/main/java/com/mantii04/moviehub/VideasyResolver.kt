@@ -33,7 +33,7 @@ object VideasyResolver {
             try {
                 // 1. Get Seed
                 val seedUrl = "https://api.wecollege.net/seed?mediaId=$tmdbId"
-                val seedReq = Request.Builder().url(seedUrl).header("User-Agent", "Mozilla/5.0").build()
+                val seedReq = Request.Builder().url(seedUrl).header("User-Agent", "Mozilla/5.0").header("Origin", "https://player.videasy.to").header("Referer", "https://player.videasy.to/").build()
                 val seedResp = client.newCall(seedReq).execute()
                 if (!seedResp.isSuccessful) throw Exception("Seed HTTP ${seedResp.code}")
                 val seed = JSONObject(seedResp.body?.string() ?: "{}").optString("seed")
@@ -52,7 +52,7 @@ object VideasyResolver {
                     .header("Referer", "https://player.videasy.to/")
                     .build()
                 val encResp = client.newCall(encReq).execute()
-                if (!encResp.isSuccessful) throw Exception("Videasy HTTP ${encResp.code}")
+                if (!encResp.isSuccessful) throw Exception("Videasy HTTP ${encResp.code} on $apiUrl")
                 val encText = encResp.body?.string() ?: ""
 
                 // 3. Decrypt via enc-dec.app
