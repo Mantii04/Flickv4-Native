@@ -23,7 +23,7 @@ object VideasyResolver {
         title: String,
         year: String,
         tmdbId: Int,
-        imdbId: String?,
+        imdbId: String? = null,
         isTv: Boolean,
         season: Int?,
         episode: Int?,
