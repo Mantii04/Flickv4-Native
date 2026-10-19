@@ -595,7 +595,7 @@ fun DetailScreen(id: Int, isTv: Boolean, navController: NavHostController, db: A
                 Row(modifier = Modifier.fillMaxWidth().clickable {
                     val intent = Intent(navController.context, PlayerActivity::class.java)
                     intent.putExtra("EMBED_URL", "https://vidrock.net/tv/$id/$selectedSeason/${ep.epNum}?autoplay=true&download=false&theme=e50914")
-                    intent.putExtra("ID", id); intent.putExtra("TITLE", "${d.title} S${selectedSeason}E${ep.epNum}"); intent.putExtra("POSTER", d.posterPath) intent.putExtra("IS_TV", true)
+                    intent.putExtra("ID", id); intent.putExtra("TITLE", "${d.title} S${selectedSeason}E${ep.epNum}"); intent.putExtra("POSTER", d.posterPath); intent.putExtra("IS_TV", true)
                     navController.context.startActivity(intent)
                 }.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                     AsyncImage(model = TmdbService.IMG_BASE + "w300" + ep.stillPath, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.width(130.dp).height(74.dp).clip(RoundedCornerShape(4.dp)))
