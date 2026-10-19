@@ -8,6 +8,9 @@ import org.json.JSONObject
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
+data class StreamData(val videoUrl: String, val subtitles: List<SubtitleTrack>)
+data class SubtitleTrack(val language: String, val url: String)
+
 object VideasyResolver {
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
