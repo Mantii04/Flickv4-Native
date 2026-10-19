@@ -10,16 +10,13 @@ object StreamResolver {
         episode: Int?,
         onResult: (List<StreamData>, String?) -> Unit
     ) {
-        // 1. Try VidRock First
-        VidRockResolver.resolve(tmdbId, isTv, season, episode) { urls, error ->
-            if (!urls.isNullOrEmpty()) {
-                // VidRock returned a single URL — wrap as a one-stream list (no subtitles from VidRock)
-                val streams = listOf(StreamData(urls, emptyList()))
-                onResult(streams, null)
-            } else {
-                // 2. VidRock failed. Fallback to Videasy.
-                // First, we need the IMDB ID for Videasy
-                TmdbService.getImdbId(tmdbId, isTv) { imdbId ->
+        // 1. Resolve IMDB ID first (VidSrc prefers it for TV)
+        TmdbService.getImdbId(tmdbId, isTv) { imdbId ->
+            VidSrcResolver.resolve(tmdbId, imdbId, isTv, season, episode) { stream, err ->
+                if (stream != null) {
+                    onResult(listOf(stream), null)
+                } else {
+                    // 2. Fallback to Videasy
                     VideasyResolver.resolve(
                         title = title,
                         year = year,
@@ -28,12 +25,9 @@ object StreamResolver {
                         isTv = isTv,
                         season = season,
                         episode = episode
-                    ) { streamData, videasyError ->
-                        if (streamData != null) {
-                            onResult(listOf(streamData), null)
-                        } else {
-                            onResult(emptyList(), "All providers failed. Last error: $videasyError")
-                        }
+                    ) { fallback, ferr ->
+                        if (fallback != null) onResult(listOf(fallback), null)
+                        else onResult(emptyList(), "All providers failed: ${ferr ?: err}")
                     }
                 }
             }
