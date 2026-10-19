@@ -1,8 +1,8 @@
 package com.mantii04.moviehub
 
 import android.content.pm.ActivityInfo
-import android.view.ViewGroup
 import android.os.Bundle
+import android.view.ViewGroup
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
@@ -30,6 +30,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.TrackSelectionParameters
@@ -60,23 +61,24 @@ class PlayerActivity : ComponentActivity() {
         val isTv = intent.getBooleanExtra("IS_TV", false)
         val season = intent.getIntExtra("SEASON", 0).takeIf { it > 0 }
         val episode = intent.getIntExtra("EPISODE", 0).takeIf { it > 0 }
+        val year = intent.getStringExtra("YEAR") ?: "" // We'll need to pass this from DetailScreen
 
         setContent {
-            var streamUrl by remember { mutableStateOf<String?>(null) }
+            var streams by remember { mutableStateOf<List<StreamData>>(emptyList()) }
             var errorMsg by remember { mutableStateOf<String?>(null) }
             val context = LocalContext.current
             val db = AppDatabase.getDatabase(context)
 
             LaunchedEffect(id) {
-                VidRockResolver.resolve(id, isTv, season, episode) { url, err ->
-                    if (url != null) streamUrl = url else errorMsg = err ?: "Unknown error"
+                StreamResolver.resolve(title, year, id, isTv, season, episode) { results, err ->
+                    if (results.isNotEmpty()) streams = results else errorMsg = err ?: "Unknown error"
                 }
             }
 
             MaterialTheme(colorScheme = darkColorScheme(primary = Color(0xFFE50914), background = Color.Black)) {
                 when {
-                    streamUrl != null -> ExoPlayerView(
-                        url = streamUrl!!, id = id, title = title,
+                    streams.isNotEmpty() -> ExoPlayerView(
+                        streams = streams, id = id, title = title,
                         poster = poster, isTv = isTv, db = db
                     )
                     errorMsg != null -> Box(
@@ -98,7 +100,7 @@ class PlayerActivity : ComponentActivity() {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             CircularProgressIndicator(color = Color(0xFFE50914))
                             Spacer(modifier = Modifier.height(16.dp))
-                            Text("Decrypting VidRock stream…", color = Color.White, fontSize = 14.sp)
+                            Text("Resolving stream…", color = Color.White, fontSize = 14.sp)
                         }
                     }
                 }
@@ -109,7 +111,10 @@ class PlayerActivity : ComponentActivity() {
     override fun onDestroy() { exoPlayer?.release(); exoPlayer = null; super.onDestroy() }
 
     @Composable
-    fun ExoPlayerView(url: String, id: Int, title: String, poster: String, isTv: Boolean, db: AppDatabase) {
+    fun ExoPlayerView(streams: List<StreamData>, id: Int, title: String, poster: String, isTv: Boolean, db: AppDatabase) {
+        var currentIndex by remember { mutableStateOf(0) }
+        val currentStream = streams.getOrNull(currentIndex)
+
         var isPlaying by remember { mutableStateOf(false) }
         var position by remember { mutableStateOf(0L) }
         var duration by remember { mutableStateOf(1L) }
@@ -117,17 +122,33 @@ class PlayerActivity : ComponentActivity() {
         var videoHeight by remember { mutableStateOf(0) }
         var playError by remember { mutableStateOf<String?>(null) }
 
-        LaunchedEffect(url) {
+        LaunchedEffect(currentStream) {
+            if (currentStream == null) {
+                playError = "All streams failed."
+                return@LaunchedEffect
+            }
             if (exoPlayer == null) {
                 val trackSelector = DefaultTrackSelector(this@PlayerActivity)
                 val dataSourceFactory = DefaultHttpDataSource.Factory()
                     .setDefaultRequestProperties(mapOf(
-                        "User-Agent" to "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36",
-                        "Referer" to "https://vidrock.net/"
+                        "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                        "Referer" to "https://player.videasy.to/" // Set for Videasy CDN
                     ))
 
-                val mediaItem = MediaItem.fromUri(url)
-                val mediaSource = HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
+                // Build MediaItem with Subtitles if available
+                val mediaItemBuilder = MediaItem.Builder().setUri(currentStream.videoUrl)
+                if (currentStream.subtitles.isNotEmpty()) {
+                    val subConfigs = currentStream.subtitles.map { sub ->
+                        MediaItem.SubtitleConfiguration.Builder(android.net.Uri.parse(sub.url))
+                            .setMimeType(MimeTypes.TEXT_VTT)
+                            .setLanguage(sub.language)
+                            .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                            .build()
+                    }
+                    mediaItemBuilder.setSubtitleConfigurations(subConfigs)
+                }
+
+                val mediaSource = HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItemBuilder.build())
 
                 val player = ExoPlayer.Builder(this@PlayerActivity).setTrackSelector(trackSelector).build()
                 player.setMediaSource(mediaSource)
@@ -141,7 +162,14 @@ class PlayerActivity : ComponentActivity() {
                         if (state == Player.STATE_READY) player.play()
                     }
                     override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                        playError = error.errorCodeName
+                        // AUTO-FALLBACK
+                        if (currentIndex < streams.size - 1) {
+                            currentIndex++
+                            exoPlayer?.release()
+                            exoPlayer = null
+                        } else {
+                            playError = error.errorCodeName
+                        }
                     }
                     override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
                         videoHeight = videoSize.height
