@@ -12,9 +12,9 @@ object StreamResolver {
     ) {
         // 1. Try VidRock First
         VidRockResolver.resolve(tmdbId, isTv, season, episode) { urls, error ->
-            if (urls.isNotEmpty()) {
-                // VidRock found URLs. Map them to StreamData (no subtitles from VidRock)
-                val streams = urls.map { StreamData(it, emptyList()) }
+            if (!urls.isNullOrEmpty()) {
+                // VidRock returned a single URL — wrap as a one-stream list (no subtitles from VidRock)
+                val streams = listOf(StreamData(urls, emptyList()))
                 onResult(streams, null)
             } else {
                 // 2. VidRock failed. Fallback to Videasy.
