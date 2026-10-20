@@ -138,11 +138,15 @@ class PlayerActivity : ComponentActivity() {
 
                 // VidSrc CDN blocks requests that have the wrong Referer/Origin.
                 // We set VidSrc as the primary referer here.
+                val providerName = currentStream.provider ?: "vidsrc"
+                val ref = if (providerName == "vidsrc") "https://vidsrc.buzz/" else "https://player.videasy.to/"
+                val orig = if (providerName == "vidsrc") "https://vidsrc.buzz" else "https://player.videasy.to"
+
                 val dataSourceFactory = OkHttpDataSource.Factory(httpClient)
                     .setDefaultRequestProperties(mapOf(
                         "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-                        "Referer" to "https://vidsrc.buzz/",
-                        "Origin" to "https://vidsrc.buzz"
+                        "Referer" to ref,
+                        "Origin" to orig
                     ))
 
                 // Build MediaItem with Subtitles if available

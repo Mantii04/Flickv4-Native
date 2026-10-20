@@ -10,7 +10,7 @@ import org.json.JSONObject
 import java.net.URLEncoder
 import java.util.concurrent.Executors
 
-data class StreamData(val videoUrl: String, val subtitles: List<SubtitleTrack>)
+data class StreamData(val videoUrl: String, val subtitles: List<SubtitleTrack>, val provider: String = "vidsrc")
 data class SubtitleTrack(val language: String, val url: String)
 
 object VideasyResolver {
@@ -97,7 +97,7 @@ object VideasyResolver {
                     }
                 }
 
-                mainHandler.post { onResult(StreamData(playlist, subtitles), null) }
+                mainHandler.post { onResult(StreamData(playlist, subtitles, "videasy"), null) }
             } catch (e: Exception) {
                 mainHandler.post { onResult(null, e.message) }
             }

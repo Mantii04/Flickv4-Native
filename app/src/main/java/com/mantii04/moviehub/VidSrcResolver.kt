@@ -108,7 +108,7 @@ object VidSrcResolver {
                         if (json.has("url") && json.optString("type") == "hls") {
                             val streamPath = json.getString("url")
                             val m3u8Url = "https://vidsrc.buzz$streamPath"
-                            onResult(StreamData(m3u8Url, emptyList()), null)
+                            onResult(StreamData(m3u8Url, emptyList(), "vidsrc"), null)
                             return@execute
                         }
                     } catch (e: Exception) {
