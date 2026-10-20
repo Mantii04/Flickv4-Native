@@ -27,8 +27,10 @@ object VidSrcResolver {
         executor.execute {
             try {
                 val id = if (isTv && !imdbId.isNullOrEmpty()) imdbId else tmdbId.toString()
+                val s = season ?: 1
+                val e = episode ?: 1
                 val embedUrl = if (isTv) {
-                    "https://vidsrc.buzz/embed/tv/$id/$season/$episode"
+                    "https://vidsrc.buzz/embed/tv/$id/$s/$e"
                 } else {
                     "https://vidsrc.buzz/embed/movie/$id"
                 }
@@ -38,9 +40,12 @@ object VidSrcResolver {
                 val html = r1.body?.string() ?: throw Exception("Embed page empty")
 
                 // 2. Extract var Q = {...};
-                val qRegex = Regex("""var Q = (\{.+?\});""", RegexOption.DOT_MATCHES_ALL)
-                val qMatch = qRegex.find(html) ?: throw Exception("Q not found")
-                val qJson = JSONObject(qMatch.groupValues[1])
+                val qStart = html.indexOf("var Q = ")
+                if (qStart == -1) throw Exception("Q not found")
+                val qEnd = html.indexOf("};", qStart)
+                if (qEnd == -1) throw Exception("Q end not found")
+                val qStr = html.substring(qStart + 8, qEnd + 1)
+                val qJson = JSONObject(qStr)
 
                 val t = qJson.optString("t")
                 val servers = qJson.optJSONObject("ssr")?.optJSONArray("servers")
