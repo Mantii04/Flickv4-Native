@@ -14,8 +14,6 @@ object VidSrcResolver {
         .followRedirects(true)
         .build()
     private val executor = Executors.newSingleThreadExecutor()
-    
-    // Full Chrome headers to bypass Cloudflare bot protection
     private const val UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
     fun resolve(
@@ -29,8 +27,6 @@ object VidSrcResolver {
         executor.execute {
             try {
                 var finalImdbId = imdbId
-                
-                // Fallback: Fetch IMDB ID directly if it's missing
                 if (isTv && finalImdbId.isNullOrEmpty()) {
                     val tmdbUrl = "https://api.themoviedb.org/3/tv/$tmdbId/external_ids?api_key=49d5c25978104677e47887dce958c9c0"
                     val tr = client.newCall(Request.Builder().url(tmdbUrl).build()).execute()
@@ -46,7 +42,6 @@ object VidSrcResolver {
                     "https://vidsrc.buzz/embed/movie/$id"
                 }
 
-                // Fetch embed page with full browser headers
                 val r1 = client.newCall(
                     Request.Builder().url(embedUrl)
                         .header("User-Agent", UA)
@@ -60,12 +55,8 @@ object VidSrcResolver {
                 
                 val html = r1.body?.string() ?: throw Exception("Embed page empty")
 
-                // Extract var Q
                 val qStart = html.indexOf("var Q = ")
-                if (qStart == -1) {
-                    // If Cloudflare blocked us, it returns a short HTML page.
-                    throw Exception("Q not found (Len: ${html.length})")
-                }
+                if (qStart == -1) throw Exception("Q not found (Len: ${html.length})")
                 val qEnd = html.indexOf("};", qStart)
                 if (qEnd == -1) throw Exception("Q end not found")
                 
@@ -79,9 +70,11 @@ object VidSrcResolver {
                     throw Exception("No servers available for this title")
                 }
 
+                var bestUrl: String? = null
+                var bestHeight = 0
                 var lastError = "No streams"
 
-                // Try each server
+                // Try each server and find the one with the highest resolution
                 for (i in 0 until servers.length()) {
                     try {
                         val server = servers.getJSONObject(i)
@@ -108,14 +101,36 @@ object VidSrcResolver {
                         if (json.has("url") && json.optString("type") == "hls") {
                             val streamPath = json.getString("url")
                             val m3u8Url = "https://vidsrc.buzz$streamPath"
-                            onResult(StreamData(m3u8Url, emptyList(), "vidsrc"), null)
-                            return@execute
+                            
+                            // Fetch the m3u8 to check its resolution
+                            val m3u8Resp = client.newCall(Request.Builder().url(m3u8Url).header("User-Agent", UA).build()).execute()
+                            val m3u8Text = m3u8Resp.body?.string() ?: ""
+                            
+                            // Extract resolution (e.g., RESOLUTION=1920x1080)
+                            val resRegex = Regex("""RESOLUTION=\d+x(\d+)""")
+                            val heights = resRegex.findAll(m3u8Text).map { it.groupValues[1].toInt() }.toList()
+                            val maxHeight = heights.maxOrNull() ?: 0
+
+                            // If we find 1080p or higher, we can stop early. Otherwise, keep the best one found so far.
+                            if (maxHeight > bestHeight || bestUrl == null) {
+                                bestHeight = maxHeight
+                                bestUrl = m3u8Url
+                            }
+                            
+                            if (bestHeight >= 1080) {
+                                break // Found 1080p, stop checking other servers
+                            }
                         }
                     } catch (e: Exception) {
                         lastError = e.message ?: "server $i failed"
                     }
                 }
-                onResult(null, lastError)
+                
+                if (bestUrl != null) {
+                    onResult(StreamData(bestUrl, emptyList(), "vidsrc"), null)
+                } else {
+                    onResult(null, lastError)
+                }
             } catch (e: Exception) {
                 onResult(null, e.message)
             }
