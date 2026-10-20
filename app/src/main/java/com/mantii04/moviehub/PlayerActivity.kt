@@ -233,12 +233,14 @@ class PlayerActivity : ComponentActivity() {
             AndroidView(
                 factory = { ctx ->
                     PlayerView(ctx).apply {
-                        player = exoPlayer
                         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
                         resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                         keepScreenOn = true
                         useController = false
                     }
+                },
+                update = { view ->
+                    view.player = exoPlayer
                 },
                 modifier = Modifier.fillMaxSize()
             )

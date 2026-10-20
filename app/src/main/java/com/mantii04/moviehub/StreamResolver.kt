@@ -10,13 +10,14 @@ object StreamResolver {
         episode: Int?,
         onResult: (List<StreamData>, String?) -> Unit
     ) {
-        // 1. Resolve IMDB ID first (VidSrc prefers it for TV)
+        // Fetch IMDB ID first
         TmdbService.getImdbId(tmdbId, isTv) { imdbId ->
+            // VidSrc prefers IMDB for TV, TMDB for Movies
             VidSrcResolver.resolve(tmdbId, imdbId, isTv, season, episode) { stream, err ->
                 if (stream != null) {
                     onResult(listOf(stream), null)
                 } else {
-                    // 2. Fallback to Videasy
+                    // Fallback to Videasy
                     VideasyResolver.resolve(
                         title = title,
                         year = year,
@@ -27,7 +28,7 @@ object StreamResolver {
                         episode = episode
                     ) { fallback, ferr ->
                         if (fallback != null) onResult(listOf(fallback), null)
-                        else onResult(emptyList(), "All providers failed: ${ferr ?: err}")
+                        else onResult(emptyList(), "VidSrc: $err | Videasy: $ferr")
                     }
                 }
             }
