@@ -146,7 +146,7 @@ class PlayerActivity : ComponentActivity() {
             if (exoPlayer != null) return@LaunchedEffect
 
             val myIndex = currentIndex
-            val trackSelector = DefaultTrackSelector(this@PlayerActivity)
+            val trackSelector = DefaultTrackSelector(this@PlayerActivity).apply { setParameters(buildUponParameters().setPreferredAudioLanguage("en").setPreferredTextLanguage("en").build()) }
             val httpClient = OkHttpClient.Builder()
                 .followRedirects(true)
                 .followSslRedirects(true)
