@@ -27,19 +27,7 @@ jobs:
         run: |
           ./jadx/bin/jadx -d decompiled --no-res --threads-count 4 FLIXVISION_3.9.0.apk
           
-      - name: Search for Screen Scaling and Providers
-        run: |
-          echo "=== RESIZE MODES ==="
-          grep -rniE "resize_mode|resizemode|aspectratioframelayout" decompiled/ | grep -v "R.java" | head -40 || true
-          echo -e "\n=== SCALE / LAYOUT PARAMS ==="
-          grep -rniE "scaleX|scaleY|videoScale|surface_type|layoutparams" decompiled/ | grep -v "R.java" | head -40 || true
-          echo -e "\n=== PROVIDER ENDPOINTS ==="
-          grep -rniE "vidsrc|vixsrc|flixvision|directstream|direct_stream" decompiled/ | grep -v "R.java" | head -40 || true
-          echo -e "\n=== API KEYS / DOMAINS ==="
-          grep -rniE "https://[a-zA-Z0-9\.\-]+\.[a-z]+/(api|stream|v1|v2)/" decompiled/ | grep -v "R.java" | head -40 || true
-          
       - name: Zip Decompiled Code
-        if: always()
         run: |
           cd decompiled && zip -r ../decompiled.zip . && cd ..
           
