@@ -13,6 +13,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -123,6 +125,7 @@ class PlayerActivity : ComponentActivity() {
         var controlsVisible by remember { mutableStateOf(true) }
         var videoHeight by remember { mutableStateOf(0) }
         var playError by remember { mutableStateOf<String?>(null) }
+        var showProviderMenu by remember { mutableStateOf(false) }
 
         LaunchedEffect(currentStream) {
             if (currentStream == null) {
@@ -256,6 +259,29 @@ class PlayerActivity : ComponentActivity() {
                     Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = { finish() }) { Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White) }
                         Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).padding(start = 8.dp))
+                        if (streams.size > 1) {
+                            Box {
+                                IconButton(onClick = { showProviderMenu = true }) {
+                                    Icon(Icons.Default.List, contentDescription = "Servers", tint = Color.White)
+                                }
+                                DropdownMenu(
+                                    expanded = showProviderMenu,
+                                    onDismissRequest = { showProviderMenu = false }
+                                ) {
+                                    streams.forEachIndexed { index, stream ->
+                                        DropdownMenuItem(
+                                            text = { Text("Server: ${stream.provider?.uppercase() ?: "UNKNOWN"}") },
+                                            onClick = {
+                                                showProviderMenu = false
+                                                currentIndex = index
+                                                exoPlayer?.release()
+                                                exoPlayer = null
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
                         Text(
                             when {
                                 playError != null -> "ERR"

@@ -1,5 +1,9 @@
 package com.mantii04.moviehub
 
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.Collections
+
 object StreamResolver {
     fun resolve(
         title: String,
@@ -10,26 +14,45 @@ object StreamResolver {
         episode: Int?,
         onResult: (List<StreamData>, String?) -> Unit
     ) {
-        // Fetch IMDB ID first
         TmdbService.getImdbId(tmdbId, isTv) { imdbId ->
-            // VidSrc prefers IMDB for TV, TMDB for Movies
-            VidSrcResolver.resolve(tmdbId, imdbId, isTv, season, episode) { stream, err ->
-                if (stream != null) {
-                    onResult(listOf(stream), null)
-                } else {
-                    // Fallback to Videasy
-                    VideasyResolver.resolve(
-                        title = title,
-                        year = year,
-                        tmdbId = tmdbId,
-                        imdbId = imdbId,
-                        isTv = isTv,
-                        season = season,
-                        episode = episode
-                    ) { fallback, ferr ->
-                        if (fallback != null) onResult(listOf(fallback), null)
-                        else onResult(emptyList(), "VidSrc: $err | Videasy: $ferr")
+            val results = Collections.synchronizedList(mutableListOf<StreamData>())
+            val latch = CountDownLatch(4)
+
+            // 1. VidSrc
+            VidSrcResolver.resolve(tmdbId, imdbId, isTv, season, episode) { s, _ ->
+                if (s != null) results.add(s.copy(provider = "vidsrc"))
+                latch.countDown()
+            }
+            // 2. Videm
+            VidemResolver.resolve(tmdbId, imdbId, isTv, season, episode) { s, _ ->
+                if (s != null) results.add(s.copy(provider = "videm"))
+                latch.countDown()
+            }
+            // 3. VixSrc (requires imdbId)
+            if (!imdbId.isNullOrEmpty()) {
+                VixSrcResolver.resolve(imdbId, isTv, season, episode) { s, _ ->
+                    if (s != null) results.add(s.copy(provider = "vixsrc"))
+                    latch.countDown()
+                }
+            } else {
+                latch.countDown()
+            }
+            // 4. Videasy
+            VideasyResolver.resolve(title, year, tmdbId, imdbId, isTv, season, episode) { s, _ ->
+                if (s != null) results.add(s.copy(provider = "videasy"))
+                latch.countDown()
+            }
+
+            executor.execute {
+                try {
+                    latch.await(20, TimeUnit.SECONDS)
+                    if (results.isNotEmpty()) {
+                        onResult(results, null)
+                    } else {
+                        onResult(emptyList(), "All providers failed")
                     }
+                } catch (e: Exception) {
+                    onResult(emptyList(), e.message)
                 }
             }
         }
