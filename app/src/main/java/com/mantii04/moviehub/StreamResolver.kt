@@ -5,6 +5,7 @@ import java.util.concurrent.TimeUnit
 import java.util.Collections
 
 object StreamResolver {
+    private val executor = java.util.concurrent.Executors.newSingleThreadExecutor()
     fun resolve(
         title: String,
         year: String,
