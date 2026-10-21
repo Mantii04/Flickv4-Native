@@ -23,9 +23,9 @@ jobs:
           unzip -q jadx-1.5.1.zip -d jadx
           chmod +x jadx/bin/jadx
           
-      - name: Decompile APK (Ignore 24 obfuscated errors)
+      - name: Decompile APK (Force Deobfuscation)
         run: |
-          ./jadx/bin/jadx -d decompiled --no-res --threads-count 4 FLIXVISION_3.9.0.apk || true
+          ./jadx/bin/jadx -d decompiled --no-res --threads-count 4 --show-bad-code FLIXVISION_3.9.0.apk || true
           
       - name: Zip Decompiled Code
         run: |
