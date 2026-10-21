@@ -275,12 +275,11 @@ class PlayerActivity : ComponentActivity() {
                             ViewGroup.LayoutParams.MATCH_PARENT,
                             ViewGroup.LayoutParams.MATCH_PARENT
                         )
-                        resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                         keepScreenOn = true
                         useController = false
                     }
                 },
-                update = { view -> view.player = exoPlayer },
+                update = { view -> view.player = exoPlayer; view.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM },
                 modifier = Modifier.fillMaxSize()
             )
 
