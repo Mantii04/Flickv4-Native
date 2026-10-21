@@ -1,0 +1,7 @@
+package androidx.activity;
+
+/* loaded from: classes.dex */
+public final class b {
+    public b(kotlin.jvm.internal.g gVar) {
+    }
+}

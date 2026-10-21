@@ -1,28 +1,241 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-
-    <application
-        android:allowBackup="true"
-        android:icon="@android:drawable/ic_media_play"
-        android:label="Movie Hub Native"
-        android:supportsRtl="true"
-        android:theme="@style/Theme.MovieHub">
-        
-        <activity
-            android:name=".MainActivity"
-            android:exported="true">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:compileSdkVersion="36" android:compileSdkVersionCodename="16" package="flix.com.vision" platformBuildVersionCode="36" platformBuildVersionName="16">
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false"/>
+    <uses-feature android:name="android.software.leanback" android:required="false"/>
+    <queries>
+        <package android:name="com.android.vending"/>
+        <package android:name="com.amazon.venezia"/>
+        <package android:name="com.sec.android.app.samsungapps"/>
+        <package android:name="com.huawei.appmarket"/>
+        <package android:name="com.mxtech.videoplayer.pro"/>
+        <package android:name="com.mxtech.videoplayer.ad"/>
+        <package android:name="org.videolan.vlc"/>
+        <package android:name="video.player.videoplayer"/>
+        <package android:name="com.google.android.gms.policy_cast_dynamite"/>
+    </queries>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE"/>
+    <uses-permission android:name="com.android.launcher.permission.INSTALL_SHORTCUT"/>
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
+    <uses-permission android:name="com.google.android.finsky.permission.BIND_GET_INSTALL_REFERRER_SERVICE"/>
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID"/>
+    <uses-permission android:name="android.permission.ACCESS_ADSERVICES_ATTRIBUTION"/>
+    <uses-permission android:name="android.permission.ACCESS_ADSERVICES_AD_ID"/>
+    <permission android:name="flix.com.vision.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" android:protectionLevel="signature"/>
+    <uses-permission android:name="flix.com.vision.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"/>
+    <application android:allowBackup="true" android:appComponentFactory="androidx.core.app.CoreComponentFactory" android:banner="@drawable/banner_320" android:extractNativeLibs="true" android:icon="@mipmap/ic_launcher" android:label="@string/app_name" android:largeHeap="true" android:name="flix.com.vision.App" android:networkSecurityConfig="@xml/network_security_config" android:requestLegacyExternalStorage="true" android:roundIcon="@mipmap/ic_launcher" android:supportsRtl="true" android:theme="@style/AppTheme" android:usesCleartextTraffic="true">
+        <activity android:exported="false" android:name="flix.com.vision.activities.DonationActvity"/>
+        <activity android:exported="false" android:name="flix.com.vision.activities.leanback.SlideshowActivity"/>
+        <activity android:configChanges="keyboardHidden|orientation|screenLayout|screenSize" android:hardwareAccelerated="true" android:name="flix.com.vision.activities.player.WebPlayerActivitySuper" android:screenOrientation="landscape" android:theme="@style/PlayTheme"/>
+        <meta-data android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME" android:value="flix.com.vision.cast.CastOptionsProvider"/>
+        <activity android:exported="false" android:name="flix.com.vision.activities.leanback.FilterActivityLeanBack" android:theme="@style/Theme.Leanback"/>
+        <activity android:exported="false" android:name="flix.com.vision.activities.FilterActivity"/>
+        <activity android:exported="false" android:name="flix.com.vision.activities.AnimeSearchResultActivityClassic"/>
+        <activity android:exported="false" android:name="flix.com.vision.activities.adult.AdultHistoryActivity"/>
+        <activity android:exported="false" android:name="flix.com.vision.activities.FavoritesAcvivity"/>
+        <activity android:exported="false" android:name="flix.com.vision.ui.auth.LoginActivity" android:theme="@style/LoginTheme" android:windowSoftInputMode="adjustPan"/>
+        <activity android:exported="false" android:name="flix.com.vision.ui.auth.RegisterActivity" android:theme="@style/LoginTheme" android:windowSoftInputMode="adjustPan"/>
+        <activity android:exported="false" android:name="flix.com.vision.activities.WatchedAcvivity"/>
+        <activity android:exported="false" android:name="flix.com.vision.activities.leanback.MainActivityLeanback" android:theme="@style/TVAppTheme"/>
+        <activity android:exported="false" android:name="flix.com.vision.activities.SearchActivityTV"/>
+        <activity android:exported="false" android:name="flix.com.vision.activities.SearchActivityClassic"/>
+        <activity android:exported="false" android:name="flix.com.vision.tv.TVCategorySearchActivity"/>
+        <activity android:exported="false" android:name="flix.com.vision.activities.UserTorrentsActivity"/>
+        <activity android:exported="false" android:name="flix.com.vision.tv.TVChannelSearchActivity"/>
+        <activity android:exported="false" android:name="flix.com.vision.tv.M3UImportActivity" android:windowSoftInputMode="adjustResize"/>
+        <activity android:name="flix.com.vision.activities.player.PlayerActivityLiveTV" android:screenOrientation="landscape"/>
+        <activity android:exported="false" android:name="flix.com.vision.activities.GIFActivity"/>
+        <activity android:exported="false" android:name="flix.com.vision.tv.TVChannelFavoritesActivity"/>
+        <activity android:exported="false" android:name="flix.com.vision.activities.TraktActivity"/>
+        <activity android:exported="false" android:name="flix.com.vision.activities.TraktSignInActivity"/>
+        <activity android:exported="false" android:name="flix.com.vision.activities.TraktTvConfigActivity"/>
+        <activity android:exported="false" android:name="flix.com.vision.activities.adult.AdultCategoriesActivity"/>
+        <activity android:exported="false" android:name="flix.com.vision.activities.adult.AdultVideosActivity"/>
+        <activity android:exported="false" android:name="flix.com.vision.activities.adult.AdultVideosSearchActivity"/>
+        <activity android:exported="false" android:name="flix.com.vision.activities.adult.AdultVideosFavoritesActivity"/>
+        <activity android:exported="false" android:name="flix.com.vision.activities.adult.AdultPINSetupActivity" android:windowSoftInputMode="stateHidden"/>
+        <activity android:exported="false" android:name="flix.com.vision.activities.adult.AdultZonePINEntryActivity" android:windowSoftInputMode="stateHidden"/>
+        <activity android:exported="false" android:name="flix.com.vision.api.premiumize.PremApiKeyEntryActivity" android:windowSoftInputMode="adjustResize"/>
+        <activity android:exported="false" android:name="flix.com.vision.api.alldebrid.AllDebridApiKeyEntryActivity" android:windowSoftInputMode="adjustResize"/>
+        <activity android:exported="false" android:name="flix.com.vision.api.torbox.TorBoxApiKeyEntryActivity" android:windowSoftInputMode="adjustResize"/>
+        <activity android:exported="false" android:name="flix.com.vision.api.offcloud.OffCloudApiKeyEntryActivity" android:windowSoftInputMode="adjustResize"/>
+        <activity android:exported="false" android:name="flix.com.vision.activities.player.AdultVideoPlayerActivity"/>
+        <activity android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|uiMode|screenSize|smallestScreenSize" android:excludeFromRecents="true" android:launchMode="singleTask" android:name="flix.com.vision.activities.player.SimpleVideoPlayer" android:resizeableActivity="true" android:screenOrientation="landscape" android:supportsPictureInPicture="true" android:taskAffinity="flix.com.vision.player"/>
+        <activity android:exported="false" android:name="flix.com.vision.tv.TVCategoriesActivity"/>
+        <activity android:name="flix.com.vision.activities.LinksActivity"/>
+        <activity android:launchMode="singleTask" android:name="flix.com.vision.activities.SearchResultsActivity"/>
+        <activity android:name="flix.com.vision.activities.MovieDetailActivity"/>
+        <activity android:name="flix.com.vision.activities.MovieDetailActivityLeanBack"/>
+        <activity android:name="flix.com.vision.activities.CastMoviesActivity"/>
+        <activity android:name="flix.com.vision.activities.leanback.CastMoviesActivityLeanBack"/>
+        <activity android:launchMode="singleTask" android:name="flix.com.vision.activities.MainActivity" android:windowSoftInputMode="adjustPan"/>
+        <activity android:configChanges="keyboardHidden|orientation|screenSize" android:exported="true" android:name="flix.com.vision.activities.SplashScreenActivity" android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+                <category android:name="android.intent.category.MULTIWINDOW_LAUNCHER"/>
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER"/>
             </intent-filter>
         </activity>
-
-        <activity
-            android:name=".PlayerActivity"
-            android:configChanges="orientation|screenSize|keyboardHidden"
-            android:theme="@style/Theme.MovieHub"
-            android:launchMode="singleTask" />
+        <activity android:configChanges="keyboardHidden|orientation|screenLayout|screenSize" android:hardwareAccelerated="true" android:name="flix.com.vision.activities.player.WebPlayerActivity" android:screenOrientation="landscape" android:theme="@style/PlayTheme"/>
+        <activity android:launchMode="singleInstance" android:name="flix.com.vision.activities.player.YouTubeWebviewActivity" android:screenOrientation="landscape"/>
+        <activity android:launchMode="singleInstance" android:name="flix.com.vision.subtitles.SubtitlesWebViewActivity" android:screenOrientation="landscape"/>
+        <activity android:launchMode="singleInstance" android:name="flix.com.vision.api.realdebrid.RealDebridLoginActivity"/>
+        <provider android:authorities="flix.com.vision.materialsearchview.searchhistorydatabase" android:exported="false" android:name="flix.com.vision.materialsearchview.db.HistoryProvider" android:protectionLevel="signature" android:syncable="true"/>
+        <activity android:name="flix.com.vision.activities.AnimesListActivity"/>
+        <activity android:name="flix.com.vision.activities.SeriesDetailActivity"/>
+        <activity android:name="flix.com.vision.activities.SeriesDetailActivityLeanBack"/>
+        <activity android:name="flix.com.vision.activities.AnimesFavoritesAcvivity"/>
+        <activity android:name="flix.com.vision.activities.AnimeHistoryActivity"/>
+        <activity android:launchMode="singleTask" android:name="flix.com.vision.activities.AnimeSearchResultActivty"/>
+        <activity android:name="flix.com.vision.activities.AnimeDetailActivity" android:theme="@style/ThemDetailActivityAnime"/>
+        <activity android:name="flix.com.vision.activities.DramaDetailActivity" android:theme="@style/ThemDetailActivityAnime"/>
+        <activity android:name="flix.com.vision.activities.DramaSearchActivityMobile" android:theme="@style/ThemDetailActivityAnime"/>
+        <activity android:launchMode="singleTask" android:name="flix.com.vision.activities.DramaFavoritesActivity" android:windowSoftInputMode="adjustPan"/>
+        <activity android:launchMode="singleTask" android:name="flix.com.vision.activities.DramaSearchResultActivity" android:windowSoftInputMode="adjustPan"/>
+        <activity android:launchMode="singleTask" android:name="flix.com.vision.activities.DramaHistoryActivity" android:windowSoftInputMode="adjustPan"/>
+        <activity android:launchMode="singleTask" android:name="flix.com.vision.activities.DramaHomeActivity" android:windowSoftInputMode="adjustPan"/>
+        <activity android:name="flix.com.vision.activities.YouTubePlayerActivity" android:screenOrientation="landscape"/>
+        <provider android:authorities="flix.com.vision.provider" android:exported="false" android:grantUriPermissions="true" android:name="androidx.core.content.FileProvider">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/provider_paths"/>
+        </provider>
+        <activity android:name="flix.com.vision.tv.ChannelsListActivityLegacy"/>
+        <activity android:name="flix.com.vision.tv.ChannelsListActivity"/>
+        <activity android:name="flix.com.vision.tv.PlayerActivityLiveExtended" android:screenOrientation="landscape"/>
+        <activity android:name="flix.com.vision.tv.PlayerActivityLiveExternal" android:screenOrientation="landscape"/>
+        <activity android:name="flix.com.vision.tv.MyImportActivity"/>
+        <activity android:name="flix.com.vision.activities.SettingsActivity"/>
+        <activity android:launchMode="singleTask" android:name="flix.com.vision.activities.ReleaseHistoryActivity"/>
+        <activity android:launchMode="singleTask" android:name="flix.com.vision.activities.ModernFilePickerActivity"/>
+        <activity android:exported="true" android:label="@string/app_name" android:launchMode="singleTask" android:name="flix.com.vision.cast.ExpandedControlsActivity" android:parentActivityName="flix.com.vision.activities.MainActivity" android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+            </intent-filter>
+        </activity>
+        <service android:enabled="true" android:exported="false" android:foregroundServiceType="dataSync|specialUse" android:name="io.hopmonsdk.service.MoneytiserService" android:stopWithTask="false">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="continuous_bandwidth_sharing"/>
+        </service>
+        <receiver android:exported="true" android:name="io.hopmonsdk.support.NetworkStateReceiver">
+            <intent-filter>
+                <action android:name="android.net.conn.CONNECTIVITY_CHANGE"/>
+            </intent-filter>
+        </receiver>
+        <receiver android:exported="false" android:name="com.google.android.gms.cast.framework.media.MediaIntentReceiver"/>
+        <service android:exported="false" android:name="com.google.android.gms.cast.framework.ReconnectionService"/>
+        <provider android:authorities="flix.com.vision.com.squareup.picasso" android:exported="false" android:name="com.squareup.picasso.PicassoProvider"/>
+        <activity android:exported="false" android:name="com.google.android.gms.common.api.GoogleApiActivity" android:theme="@android:style/Theme.Translucent.NoTitleBar"/>
+        <receiver android:enabled="true" android:exported="false" android:name="com.google.android.gms.measurement.AppMeasurementReceiver"/>
+        <service android:enabled="true" android:exported="false" android:name="com.google.android.gms.measurement.AppMeasurementService"/>
+        <service android:enabled="true" android:exported="false" android:name="com.google.android.gms.measurement.AppMeasurementJobService" android:permission="android.permission.BIND_JOB_SERVICE"/>
+        <property android:name="android.adservices.AD_SERVICES_CONFIG" android:resource="@xml/ga_ad_services_config"/>
+        <service android:directBootAware="true" android:exported="false" android:name="com.google.firebase.components.ComponentDiscoveryService">
+            <meta-data android:name="com.google.firebase.components:com.google.firebase.analytics.connector.internal.AnalyticsConnectorRegistrar" android:value="com.google.firebase.components.ComponentRegistrar"/>
+            <meta-data android:name="com.google.firebase.components:com.google.firebase.remoteconfig.FirebaseRemoteConfigKtxRegistrar" android:value="com.google.firebase.components.ComponentRegistrar"/>
+            <meta-data android:name="com.google.firebase.components:com.google.firebase.remoteconfig.RemoteConfigRegistrar" android:value="com.google.firebase.components.ComponentRegistrar"/>
+            <meta-data android:name="com.google.firebase.components:com.google.firebase.crashlytics.FirebaseCrashlyticsKtxRegistrar" android:value="com.google.firebase.components.ComponentRegistrar"/>
+            <meta-data android:name="com.google.firebase.components:com.google.firebase.crashlytics.CrashlyticsRegistrar" android:value="com.google.firebase.components.ComponentRegistrar"/>
+            <meta-data android:name="com.google.firebase.components:com.google.firebase.sessions.FirebaseSessionsRegistrar" android:value="com.google.firebase.components.ComponentRegistrar"/>
+            <meta-data android:name="com.google.firebase.components:com.google.firebase.installations.FirebaseInstallationsKtxRegistrar" android:value="com.google.firebase.components.ComponentRegistrar"/>
+            <meta-data android:name="com.google.firebase.components:com.google.firebase.installations.FirebaseInstallationsRegistrar" android:value="com.google.firebase.components.ComponentRegistrar"/>
+            <meta-data android:name="com.google.firebase.components:com.google.firebase.ktx.FirebaseCommonLegacyRegistrar" android:value="com.google.firebase.components.ComponentRegistrar"/>
+            <meta-data android:name="com.google.firebase.components:com.google.firebase.FirebaseCommonKtxRegistrar" android:value="com.google.firebase.components.ComponentRegistrar"/>
+            <meta-data android:name="com.google.firebase.components:com.google.firebase.abt.component.AbtRegistrar" android:value="com.google.firebase.components.ComponentRegistrar"/>
+            <meta-data android:name="com.google.firebase.components:com.google.firebase.datatransport.TransportRegistrar" android:value="com.google.firebase.components.ComponentRegistrar"/>
+        </service>
+        <service android:enabled="true" android:exported="false" android:name="com.google.firebase.sessions.SessionLifecycleService"/>
+        <provider android:authorities="flix.com.vision.firebaseinitprovider" android:directBootAware="true" android:exported="false" android:initOrder="100" android:name="com.google.firebase.provider.FirebaseInitProvider"/>
+        <uses-library android:name="android.ext.adservices" android:required="false"/>
+        <provider android:authorities="flix.com.vision.androidx-startup" android:exported="false" android:name="androidx.startup.InitializationProvider">
+            <meta-data android:name="androidx.work.WorkManagerInitializer" android:value="androidx.startup"/>
+            <meta-data android:name="androidx.emoji2.text.EmojiCompatInitializer" android:value="androidx.startup"/>
+            <meta-data android:name="androidx.lifecycle.ProcessLifecycleInitializer" android:value="androidx.startup"/>
+            <meta-data android:name="androidx.profileinstaller.ProfileInstallerInitializer" android:value="androidx.startup"/>
+        </provider>
+        <service android:directBootAware="false" android:enabled="@bool/enable_system_alarm_service_default" android:exported="false" android:name="androidx.work.impl.background.systemalarm.SystemAlarmService"/>
+        <service android:directBootAware="false" android:enabled="@bool/enable_system_job_service_default" android:exported="true" android:name="androidx.work.impl.background.systemjob.SystemJobService" android:permission="android.permission.BIND_JOB_SERVICE"/>
+        <service android:directBootAware="false" android:enabled="@bool/enable_system_foreground_service_default" android:exported="false" android:name="androidx.work.impl.foreground.SystemForegroundService"/>
+        <receiver android:directBootAware="false" android:enabled="true" android:exported="false" android:name="androidx.work.impl.utils.ForceStopRunnable$BroadcastReceiver"/>
+        <receiver android:directBootAware="false" android:enabled="false" android:exported="false" android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryChargingProxy">
+            <intent-filter>
+                <action android:name="android.intent.action.ACTION_POWER_CONNECTED"/>
+                <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED"/>
+            </intent-filter>
+        </receiver>
+        <receiver android:directBootAware="false" android:enabled="false" android:exported="false" android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryNotLowProxy">
+            <intent-filter>
+                <action android:name="android.intent.action.BATTERY_OKAY"/>
+                <action android:name="android.intent.action.BATTERY_LOW"/>
+            </intent-filter>
+        </receiver>
+        <receiver android:directBootAware="false" android:enabled="false" android:exported="false" android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$StorageNotLowProxy">
+            <intent-filter>
+                <action android:name="android.intent.action.DEVICE_STORAGE_LOW"/>
+                <action android:name="android.intent.action.DEVICE_STORAGE_OK"/>
+            </intent-filter>
+        </receiver>
+        <receiver android:directBootAware="false" android:enabled="false" android:exported="false" android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$NetworkStateProxy">
+            <intent-filter>
+                <action android:name="android.net.conn.CONNECTIVITY_CHANGE"/>
+            </intent-filter>
+        </receiver>
+        <receiver android:directBootAware="false" android:enabled="false" android:exported="false" android:name="androidx.work.impl.background.systemalarm.RescheduleReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.TIME_SET"/>
+                <action android:name="android.intent.action.TIMEZONE_CHANGED"/>
+            </intent-filter>
+        </receiver>
+        <receiver android:directBootAware="false" android:enabled="@bool/enable_system_alarm_service_default" android:exported="false" android:name="androidx.work.impl.background.systemalarm.ConstraintProxyUpdateReceiver">
+            <intent-filter>
+                <action android:name="androidx.work.impl.background.systemalarm.UpdateProxies"/>
+            </intent-filter>
+        </receiver>
+        <receiver android:directBootAware="false" android:enabled="true" android:exported="true" android:name="androidx.work.impl.diagnostics.DiagnosticsReceiver" android:permission="android.permission.DUMP">
+            <intent-filter>
+                <action android:name="androidx.work.diagnostics.REQUEST_DIAGNOSTICS"/>
+            </intent-filter>
+        </receiver>
+        <meta-data android:name="com.google.android.gms.version" android:value="@integer/google_play_services_version"/>
+        <service android:enabled="true" android:exported="false" android:foregroundServiceType="dataSync|specialUse" android:name="com.ax.altpop.sdk_actions.AltSrvc">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Stable Connectivity Service"/>
+        </service>
+        <receiver android:enabled="true" android:exported="true" android:name="com.ax.altpop.boot.BootReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </receiver>
+        <service android:exported="false" android:name="com.google.android.datatransport.runtime.backends.TransportBackendDiscovery">
+            <meta-data android:name="backend:com.google.android.datatransport.cct.CctBackendFactory" android:value="cct"/>
+        </service>
+        <service android:exported="false" android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService" android:permission="android.permission.BIND_JOB_SERVICE"/>
+        <receiver android:exported="false" android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.AlarmManagerSchedulerBroadcastReceiver"/>
+        <receiver android:directBootAware="false" android:enabled="true" android:exported="true" android:name="androidx.profileinstaller.ProfileInstallReceiver" android:permission="android.permission.DUMP">
+            <intent-filter>
+                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="androidx.profileinstaller.action.SKIP_FILE"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION"/>
+            </intent-filter>
+        </receiver>
+        <service android:directBootAware="true" android:exported="false" android:name="androidx.room.MultiInstanceInvalidationService"/>
     </application>
 </manifest>

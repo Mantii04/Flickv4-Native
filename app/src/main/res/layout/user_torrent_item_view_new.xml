@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout android:orientation="vertical" android:id="@id/image_back" android:background="?android:selectableItemBackground" android:focusable="true" android:clickable="true" android:layout_width="match_parent" android:layout_height="80.0dp"
+  xmlns:android="http://schemas.android.com/apk/res/android">
+    <View android:background="#3dffffff" android:layout_width="match_parent" android:layout_height="1.0dp" />
+    <TextView android:textSize="16.0sp" android:textStyle="bold" android:textColor="#ffffff" android:id="@id/link_main_label" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginLeft="15.0dp" android:layout_marginTop="5.0dp" android:layout_marginBottom="5.0dp" android:text="" />
+    <TextView android:textSize="11.0sp" android:textStyle="bold" android:textColor="#ffffff" android:id="@id/link_detail_view" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginLeft="15.0dp" />
+    <TextView android:textSize="11.0sp" android:textStyle="bold" android:textColor="#ffffff" android:id="@id/link_source" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginLeft="15.0dp" />
+</LinearLayout>

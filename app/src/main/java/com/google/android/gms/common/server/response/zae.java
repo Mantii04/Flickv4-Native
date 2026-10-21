@@ -1,0 +1,5 @@
+package com.google.android.gms.common.server.response;
+
+/* loaded from: classes.dex */
+final class zae implements zai<Boolean> {
+}

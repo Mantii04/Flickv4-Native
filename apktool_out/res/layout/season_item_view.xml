@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout android:id="@id/season_background" android:background="@drawable/selector_menu" android:focusable="true" android:clickable="true" android:clipChildren="false" android:clipToPadding="false" android:layout_width="match_parent" android:layout_height="50.0sp"
+  xmlns:android="http://schemas.android.com/apk/res/android">
+    <LinearLayout android:gravity="center" android:orientation="horizontal" android:background="@color/transparent" android:padding="1.5dp" android:layout_width="match_parent" android:layout_height="match_parent" android:layout_marginLeft="10.0dp">
+        <TextView android:textSize="17.0sp" android:textColor="@color/white" android:id="@id/season_label_view" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Season 1" android:fontFamily="@font/product_sans_egular" />
+        <View android:layout_width="0.0dp" android:layout_height="0.0dp" android:layout_weight="1.0" />
+        <TextView android:textSize="13.0sp" android:textColor="@color/white" android:id="@id/episode_count_label" android:visibility="invisible" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginRight="10.0dp" android:fontFamily="@font/product_sans_egular" />
+    </LinearLayout>
+</RelativeLayout>

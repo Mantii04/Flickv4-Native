@@ -1,0 +1,104 @@
+package cz.msebera.android.httpclient.impl.client;
+
+import A.i;
+import com.google.firebase.analytics.FirebaseAnalytics;
+import cz.msebera.android.httpclient.Header;
+import cz.msebera.android.httpclient.HttpHost;
+import cz.msebera.android.httpclient.HttpRequest;
+import cz.msebera.android.httpclient.HttpResponse;
+import cz.msebera.android.httpclient.HttpStatus;
+import cz.msebera.android.httpclient.ProtocolException;
+import cz.msebera.android.httpclient.annotation.Contract;
+import cz.msebera.android.httpclient.annotation.ThreadingBehavior;
+import cz.msebera.android.httpclient.client.CircularRedirectException;
+import cz.msebera.android.httpclient.client.RedirectHandler;
+import cz.msebera.android.httpclient.client.params.ClientPNames;
+import cz.msebera.android.httpclient.client.utils.URIUtils;
+import cz.msebera.android.httpclient.extras.HttpClientAndroidLog;
+import cz.msebera.android.httpclient.params.HttpParams;
+import cz.msebera.android.httpclient.protocol.HttpContext;
+import cz.msebera.android.httpclient.util.Args;
+import cz.msebera.android.httpclient.util.Asserts;
+import java.net.URI;
+import java.net.URISyntaxException;
+
+@Contract(threading = ThreadingBehavior.IMMUTABLE)
+@Deprecated
+/* loaded from: classes2.dex */
+public class DefaultRedirectHandler implements RedirectHandler {
+    private static final String REDIRECT_LOCATIONS = "http.protocol.redirect-locations";
+    public HttpClientAndroidLog log = new HttpClientAndroidLog(getClass());
+
+    @Override // cz.msebera.android.httpclient.client.RedirectHandler
+    public URI getLocationURI(HttpResponse httpResponse, HttpContext httpContext) throws ProtocolException {
+        URI rewriteURI;
+        Args.notNull(httpResponse, "HTTP response");
+        Header firstHeader = httpResponse.getFirstHeader(FirebaseAnalytics.Param.LOCATION);
+        if (firstHeader == null) {
+            throw new ProtocolException("Received redirect response " + httpResponse.getStatusLine() + " but no location header");
+        }
+        String value = firstHeader.getValue();
+        if (this.log.isDebugEnabled()) {
+            this.log.debug("Redirect requested to location '" + value + "'");
+        }
+        try {
+            URI uri = new URI(value);
+            HttpParams params = httpResponse.getParams();
+            if (!uri.isAbsolute()) {
+                if (params.isParameterTrue(ClientPNames.REJECT_RELATIVE_REDIRECT)) {
+                    throw new ProtocolException("Relative redirect location '" + uri + "' not allowed");
+                }
+                HttpHost httpHost = (HttpHost) httpContext.getAttribute("http.target_host");
+                Asserts.notNull(httpHost, "Target host");
+                try {
+                    uri = URIUtils.resolve(URIUtils.rewriteURI(new URI(((HttpRequest) httpContext.getAttribute("http.request")).getRequestLine().getUri()), httpHost, URIUtils.DROP_FRAGMENT_AND_NORMALIZE), uri);
+                } catch (URISyntaxException e3) {
+                    throw new ProtocolException(e3.getMessage(), e3);
+                }
+            }
+            if (!params.isParameterFalse(ClientPNames.ALLOW_CIRCULAR_REDIRECTS)) {
+                return uri;
+            }
+            RedirectLocations redirectLocations = (RedirectLocations) httpContext.getAttribute("http.protocol.redirect-locations");
+            if (redirectLocations == null) {
+                redirectLocations = new RedirectLocations();
+                httpContext.setAttribute("http.protocol.redirect-locations", redirectLocations);
+            }
+            if (uri.getFragment() != null) {
+                try {
+                    rewriteURI = URIUtils.rewriteURI(uri, new HttpHost(uri.getHost(), uri.getPort(), uri.getScheme()), URIUtils.DROP_FRAGMENT_AND_NORMALIZE);
+                } catch (URISyntaxException e7) {
+                    throw new ProtocolException(e7.getMessage(), e7);
+                }
+            } else {
+                rewriteURI = uri;
+            }
+            if (!redirectLocations.contains(rewriteURI)) {
+                redirectLocations.add(rewriteURI);
+                return uri;
+            }
+            throw new CircularRedirectException("Circular redirect to '" + rewriteURI + "'");
+        } catch (URISyntaxException e8) {
+            throw new ProtocolException(i.k("Invalid redirect URI: ", value), e8);
+        }
+    }
+
+    @Override // cz.msebera.android.httpclient.client.RedirectHandler
+    public boolean isRedirectRequested(HttpResponse httpResponse, HttpContext httpContext) {
+        Args.notNull(httpResponse, "HTTP response");
+        int statusCode = httpResponse.getStatusLine().getStatusCode();
+        if (statusCode != 307) {
+            switch (statusCode) {
+                case HttpStatus.SC_MOVED_PERMANENTLY /* 301 */:
+                case HttpStatus.SC_MOVED_TEMPORARILY /* 302 */:
+                    break;
+                case HttpStatus.SC_SEE_OTHER /* 303 */:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+        String method = ((HttpRequest) httpContext.getAttribute("http.request")).getRequestLine().getMethod();
+        return method.equalsIgnoreCase("GET") || method.equalsIgnoreCase("HEAD");
+    }
+}

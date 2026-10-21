@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout android:layout_width="match_parent" android:layout_height="match_parent"
+  xmlns:android="http://schemas.android.com/apk/res/android">
+    <flix.com.vision.bvp.subtitle.CaptionsView android:textSize="22.0sp" android:textStyle="bold" android:textColor="#ffffff" android:gravity="center|bottom" android:id="@id/subs_box" android:paddingTop="60.0dp" android:paddingBottom="35.0dp" android:layout_width="match_parent" android:layout_height="match_parent" android:layout_marginLeft="32.0dp" android:layout_marginRight="32.0dp" android:shadowColor="#000000" android:shadowDx="2.0" android:shadowDy="2.0" android:shadowRadius="2.0" />
+</FrameLayout>

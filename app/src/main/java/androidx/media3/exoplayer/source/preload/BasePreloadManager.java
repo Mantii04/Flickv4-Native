@@ -1,0 +1,515 @@
+package androidx.media3.exoplayer.source.preload;
+
+import P3.C;
+import P3.w;
+import android.os.Handler;
+import android.os.Looper;
+import androidx.media3.common.MediaItem;
+import androidx.media3.common.util.ListenerSet;
+import androidx.media3.common.util.UnstableApi;
+import androidx.media3.common.util.Util;
+import androidx.media3.exoplayer.source.MediaSource;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+
+@UnstableApi
+/* loaded from: classes.dex */
+public abstract class BasePreloadManager<T, PreloadStatusT> {
+    private final Handler applicationHandler;
+    private int indexForSourceHolderToClear;
+    private int indexForSourceHolderToPreload;
+    private final ListenerSet<PreloadManagerListener> listeners;
+    private final Object lock = new Object();
+    private final MediaSource.Factory mediaSourceFactory;
+    private final BasePreloadManager<T, PreloadStatusT>.MediaSourceHolderMap mediaSourceHolderMap;
+    protected final RankingDataComparator<T> rankingDataComparator;
+    private final List<BasePreloadManager<T, PreloadStatusT>.MediaSourceHolder> sourceHolderPriorityList;
+    private final TargetPreloadStatusControl<T, PreloadStatusT> targetPreloadStatusControl;
+    private PreloadStatusT targetPreloadStatusOfCurrentPreloadingSource;
+
+    public static abstract class BuilderBase<T, PreloadStatusT> {
+        protected C mediaSourceFactorySupplier;
+        protected RankingDataComparator<T> rankingDataComparator;
+        protected final TargetPreloadStatusControl<T, PreloadStatusT> targetPreloadStatusControl;
+
+        public BuilderBase(RankingDataComparator<T> rankingDataComparator, TargetPreloadStatusControl<T, PreloadStatusT> targetPreloadStatusControl, C c7) {
+            this.rankingDataComparator = rankingDataComparator;
+            this.targetPreloadStatusControl = targetPreloadStatusControl;
+            this.mediaSourceFactorySupplier = c7;
+        }
+
+        public abstract BasePreloadManager<T, PreloadStatusT> build();
+    }
+
+    public class MediaSourceHolder implements Comparable<BasePreloadManager<T, PreloadStatusT>.MediaSourceHolder> {
+        public final MediaItem mediaItem;
+        private MediaSource mediaSource;
+        public final T rankingData;
+        private boolean released;
+
+        public MediaSourceHolder(MediaItem mediaItem, T t6, MediaSource mediaSource) {
+            this.mediaItem = mediaItem;
+            this.rankingData = t6;
+            this.mediaSource = mediaSource;
+        }
+
+        public synchronized MediaSource getMediaSource() {
+            return this.mediaSource;
+        }
+
+        public final boolean isReleased() {
+            return this.released;
+        }
+
+        public final void release() {
+            this.released = true;
+        }
+
+        public synchronized void setMediaSource(MediaSource mediaSource) {
+            this.mediaSource = mediaSource;
+        }
+
+        @Override // java.lang.Comparable
+        public int compareTo(BasePreloadManager<T, PreloadStatusT>.MediaSourceHolder mediaSourceHolder) {
+            return BasePreloadManager.this.rankingDataComparator.compare(this.rankingData, mediaSourceHolder.rankingData);
+        }
+    }
+
+    public final class MediaSourceHolderMap {
+        private final HashMap<MediaItem, BasePreloadManager<T, PreloadStatusT>.MediaSourceHolder> mediaItemToMediaSourceHolder = new HashMap<>();
+        private final HashMap<MediaSource, MediaItem> mediaSourceToMediaItem = new HashMap<>();
+
+        public MediaSourceHolderMap() {
+        }
+
+        public synchronized void clear() {
+            this.mediaItemToMediaSourceHolder.clear();
+            this.mediaSourceToMediaItem.clear();
+        }
+
+        public synchronized boolean containsKey(MediaItem mediaItem) {
+            return this.mediaItemToMediaSourceHolder.containsKey(mediaItem);
+        }
+
+        public synchronized BasePreloadManager<T, PreloadStatusT>.MediaSourceHolder get(MediaItem mediaItem) {
+            return this.mediaItemToMediaSourceHolder.get(mediaItem);
+        }
+
+        public synchronized void put(MediaItem mediaItem, MediaSource mediaSource, BasePreloadManager<T, PreloadStatusT>.MediaSourceHolder mediaSourceHolder) {
+            this.mediaItemToMediaSourceHolder.put(mediaItem, mediaSourceHolder);
+            this.mediaSourceToMediaItem.put(mediaSource, mediaItem);
+        }
+
+        public synchronized boolean remove(MediaItem mediaItem) {
+            BasePreloadManager<T, PreloadStatusT>.MediaSourceHolder remove = this.mediaItemToMediaSourceHolder.remove(mediaItem);
+            if (remove == null) {
+                return false;
+            }
+            P3.v.checkNotNull(this.mediaSourceToMediaItem.remove(remove.getMediaSource()));
+            return true;
+        }
+
+        public synchronized int size() {
+            return this.mediaItemToMediaSourceHolder.size();
+        }
+
+        public synchronized Collection<BasePreloadManager<T, PreloadStatusT>.MediaSourceHolder> values() {
+            return this.mediaItemToMediaSourceHolder.values();
+        }
+
+        public synchronized BasePreloadManager<T, PreloadStatusT>.MediaSourceHolder get(MediaSource mediaSource) {
+            MediaItem mediaItem = this.mediaSourceToMediaItem.get(mediaSource);
+            if (mediaItem == null) {
+                return null;
+            }
+            return (MediaSourceHolder) P3.v.checkNotNull(this.mediaItemToMediaSourceHolder.get(mediaItem));
+        }
+
+        public synchronized boolean remove(MediaSource mediaSource) {
+            MediaItem remove = this.mediaSourceToMediaItem.remove(mediaSource);
+            if (remove == null) {
+                return false;
+            }
+            P3.v.checkNotNull(this.mediaItemToMediaSourceHolder.remove(remove));
+            return true;
+        }
+    }
+
+    public BasePreloadManager(RankingDataComparator<T> rankingDataComparator, TargetPreloadStatusControl<T, PreloadStatusT> targetPreloadStatusControl, MediaSource.Factory factory) {
+        Handler createHandlerForCurrentOrMainLooper = Util.createHandlerForCurrentOrMainLooper();
+        this.applicationHandler = createHandlerForCurrentOrMainLooper;
+        this.rankingDataComparator = rankingDataComparator;
+        this.targetPreloadStatusControl = targetPreloadStatusControl;
+        this.mediaSourceFactory = factory;
+        this.listeners = new ListenerSet<>(createHandlerForCurrentOrMainLooper.getLooper());
+        this.mediaSourceHolderMap = new MediaSourceHolderMap();
+        rankingDataComparator.setInvalidationListener(new b(this, 2));
+        this.sourceHolderPriorityList = new ArrayList();
+    }
+
+    private BasePreloadManager<T, PreloadStatusT>.MediaSourceHolder getCurrentlyPreloadingMediaSourceHolder() {
+        if (this.indexForSourceHolderToPreload >= this.sourceHolderPriorityList.size()) {
+            return null;
+        }
+        return this.sourceHolderPriorityList.get(this.indexForSourceHolderToPreload);
+    }
+
+    private boolean isCurrentlyPreloading(BasePreloadManager<T, PreloadStatusT>.MediaSourceHolder mediaSourceHolder) {
+        boolean z6;
+        synchronized (this.lock) {
+            z6 = mediaSourceHolder == getCurrentlyPreloadingMediaSourceHolder();
+        }
+        return z6;
+    }
+
+    /* JADX INFO: Access modifiers changed from: private */
+    public static /* synthetic */ void lambda$onCompleted$0(MediaSourceHolder mediaSourceHolder, PreloadManagerListener preloadManagerListener) {
+        preloadManagerListener.onCompleted(mediaSourceHolder.mediaItem);
+    }
+
+    /* JADX INFO: Access modifiers changed from: private */
+    public /* synthetic */ void lambda$onCompleted$1(MediaSource mediaSource, w wVar) {
+        PreloadStatusT targetPreloadStatusIfCurrentlyPreloading = getTargetPreloadStatusIfCurrentlyPreloading(mediaSource);
+        if (targetPreloadStatusIfCurrentlyPreloading == null) {
+            return;
+        }
+        MediaSourceHolder mediaSourceHolder = (MediaSourceHolder) P3.v.checkNotNull(this.mediaSourceHolderMap.get(mediaSource));
+        if (wVar.apply(targetPreloadStatusIfCurrentlyPreloading)) {
+            this.listeners.sendEvent(new c(mediaSourceHolder, 0));
+            maybeAdvanceToNextMediaSourceHolder();
+        }
+    }
+
+    /* JADX INFO: Access modifiers changed from: private */
+    public static /* synthetic */ void lambda$onCompleted$2(MediaSourceHolder mediaSourceHolder, PreloadManagerListener preloadManagerListener) {
+        preloadManagerListener.onCompleted(mediaSourceHolder.mediaItem);
+    }
+
+    /* JADX INFO: Access modifiers changed from: private */
+    public /* synthetic */ void lambda$onCompleted$3(MediaItem mediaItem, w wVar) {
+        PreloadStatusT targetPreloadStatusIfCurrentlyPreloading = getTargetPreloadStatusIfCurrentlyPreloading(mediaItem);
+        if (targetPreloadStatusIfCurrentlyPreloading == null) {
+            return;
+        }
+        MediaSourceHolder mediaSourceHolder = (MediaSourceHolder) P3.v.checkNotNull(this.mediaSourceHolderMap.get(mediaItem));
+        if (wVar.apply(targetPreloadStatusIfCurrentlyPreloading)) {
+            this.listeners.sendEvent(new c(mediaSourceHolder, 1));
+            maybeAdvanceToNextMediaSourceHolder();
+        }
+    }
+
+    /* JADX INFO: Access modifiers changed from: private */
+    public /* synthetic */ void lambda$onError$5(MediaSource mediaSource, w wVar, PreloadException preloadException) {
+        PreloadStatusT targetPreloadStatusIfCurrentlyPreloading = getTargetPreloadStatusIfCurrentlyPreloading(mediaSource);
+        if (targetPreloadStatusIfCurrentlyPreloading != null && wVar.apply(targetPreloadStatusIfCurrentlyPreloading)) {
+            this.listeners.sendEvent(new b(preloadException, 0));
+            maybeAdvanceToNextMediaSourceHolder();
+        }
+    }
+
+    /* JADX INFO: Access modifiers changed from: private */
+    public /* synthetic */ void lambda$onError$7(MediaItem mediaItem, w wVar, PreloadException preloadException) {
+        PreloadStatusT targetPreloadStatusIfCurrentlyPreloading = getTargetPreloadStatusIfCurrentlyPreloading(mediaItem);
+        if (targetPreloadStatusIfCurrentlyPreloading != null && wVar.apply(targetPreloadStatusIfCurrentlyPreloading)) {
+            this.listeners.sendEvent(new b(preloadException, 1));
+            maybeAdvanceToNextMediaSourceHolder();
+        }
+    }
+
+    /* JADX INFO: Access modifiers changed from: private */
+    public /* synthetic */ void lambda$onMediaSourceUpdated$9(MediaItem mediaItem, MediaSource mediaSource) {
+        if (getTargetPreloadStatusIfCurrentlyPreloading(mediaItem) == null) {
+            return;
+        }
+        BasePreloadManager<T, PreloadStatusT>.MediaSourceHolder mediaSourceHolder = (MediaSourceHolder) P3.v.checkNotNull(this.mediaSourceHolderMap.get(mediaItem));
+        this.mediaSourceHolderMap.remove(mediaItem);
+        mediaSourceHolder.setMediaSource(mediaSource);
+        this.mediaSourceHolderMap.put(mediaItem, mediaSource, mediaSourceHolder);
+    }
+
+    /* JADX INFO: Access modifiers changed from: private */
+    public /* synthetic */ void lambda$onSkipped$8(MediaSource mediaSource, w wVar) {
+        PreloadStatusT targetPreloadStatusIfCurrentlyPreloading = getTargetPreloadStatusIfCurrentlyPreloading(mediaSource);
+        if (targetPreloadStatusIfCurrentlyPreloading != null && wVar.apply(targetPreloadStatusIfCurrentlyPreloading)) {
+            maybeAdvanceToNextMediaSourceHolder();
+        }
+    }
+
+    private void maybeAdvanceToNextMediaSourceHolder() {
+        synchronized (this.lock) {
+            do {
+                try {
+                    int i2 = this.indexForSourceHolderToPreload + 1;
+                    this.indexForSourceHolderToPreload = i2;
+                    if (i2 >= this.sourceHolderPriorityList.size()) {
+                        break;
+                    }
+                } finally {
+                }
+            } while (!maybeStartPreloadingNextSourceHolder());
+        }
+    }
+
+    private boolean maybeStartPreloadingNextSourceHolder() {
+        if (!shouldStartPreloadingNextSource()) {
+            return false;
+        }
+        BasePreloadManager<T, PreloadStatusT>.MediaSourceHolder mediaSourceHolder = this.sourceHolderPriorityList.get(this.indexForSourceHolderToPreload);
+        if (mediaSourceHolder.isReleased()) {
+            return false;
+        }
+        PreloadStatusT targetPreloadStatus = this.targetPreloadStatusControl.getTargetPreloadStatus(mediaSourceHolder.rankingData);
+        this.targetPreloadStatusOfCurrentPreloadingSource = targetPreloadStatus;
+        preloadMediaSourceHolderInternal(mediaSourceHolder, targetPreloadStatus);
+        return true;
+    }
+
+    private void resetSourceHolderPriorityList() {
+        this.sourceHolderPriorityList.clear();
+        this.sourceHolderPriorityList.addAll(this.mediaSourceHolderMap.values());
+        Collections.sort(this.sourceHolderPriorityList);
+        this.indexForSourceHolderToPreload = 0;
+        this.indexForSourceHolderToClear = this.sourceHolderPriorityList.size() - 1;
+    }
+
+    private void verifyApplicationThread() {
+        if (Looper.myLooper() != this.applicationHandler.getLooper()) {
+            throw new IllegalStateException("Preload manager is accessed on the wrong thread.");
+        }
+    }
+
+    public final void add(MediaItem mediaItem, T t6) {
+        add(this.mediaSourceFactory.createMediaSource(mediaItem), (MediaSource) t6);
+    }
+
+    public void addListener(PreloadManagerListener preloadManagerListener) {
+        this.listeners.add(preloadManagerListener);
+    }
+
+    public final void addMediaItems(List<MediaItem> list, List<T> list2) {
+        P3.v.checkArgument(list.size() == list2.size());
+        for (int i2 = 0; i2 < list.size(); i2++) {
+            add(list.get(i2), (MediaItem) list2.get(i2));
+        }
+        invalidate();
+    }
+
+    public final void addMediaSources(List<MediaSource> list, List<T> list2) {
+        P3.v.checkArgument(list.size() == list2.size());
+        for (int i2 = 0; i2 < list.size(); i2++) {
+            add(list.get(i2), (MediaSource) list2.get(i2));
+        }
+        invalidate();
+    }
+
+    public void clearListeners() {
+        verifyApplicationThread();
+        this.listeners.clear();
+    }
+
+    public abstract BasePreloadManager<T, PreloadStatusT>.MediaSourceHolder createMediaSourceHolder(MediaItem mediaItem, MediaSource mediaSource, T t6);
+
+    public final MediaSource getMediaSource(MediaItem mediaItem) {
+        if (this.mediaSourceHolderMap.containsKey(mediaItem)) {
+            return ((MediaSourceHolder) P3.v.checkNotNull(this.mediaSourceHolderMap.get(mediaItem))).getMediaSource();
+        }
+        return null;
+    }
+
+    public BasePreloadManager<T, PreloadStatusT>.MediaSourceHolder getMediaSourceHolderToClear() {
+        synchronized (this.lock) {
+            try {
+                int i2 = this.indexForSourceHolderToPreload;
+                int i7 = this.indexForSourceHolderToClear;
+                if (i2 >= i7) {
+                    return null;
+                }
+                return this.sourceHolderPriorityList.get(i7);
+            } catch (Throwable th) {
+                throw th;
+            }
+        }
+    }
+
+    public final int getSourceCount() {
+        return this.mediaSourceHolderMap.size();
+    }
+
+    public final PreloadStatusT getTargetPreloadStatusIfCurrentlyPreloading(MediaSource mediaSource) {
+        synchronized (this.lock) {
+            try {
+                BasePreloadManager<T, PreloadStatusT>.MediaSourceHolder currentlyPreloadingMediaSourceHolder = getCurrentlyPreloadingMediaSourceHolder();
+                if (currentlyPreloadingMediaSourceHolder != null && mediaSource == currentlyPreloadingMediaSourceHolder.getMediaSource()) {
+                    return this.targetPreloadStatusOfCurrentPreloadingSource;
+                }
+                return null;
+            } finally {
+            }
+        }
+    }
+
+    public final void invalidate() {
+        synchronized (this.lock) {
+            try {
+                resetSourceHolderPriorityList();
+                while (this.indexForSourceHolderToPreload < this.sourceHolderPriorityList.size() && !maybeStartPreloadingNextSourceHolder()) {
+                    this.indexForSourceHolderToPreload++;
+                }
+            } catch (Throwable th) {
+                throw th;
+            }
+        }
+    }
+
+    public final void onCompleted(MediaSource mediaSource, w wVar) {
+        this.applicationHandler.post(new a(this, mediaSource, wVar, 1));
+    }
+
+    public final void onError(PreloadException preloadException, MediaSource mediaSource, w wVar) {
+        this.applicationHandler.post(new Y2.a(this, mediaSource, wVar, preloadException, 2));
+    }
+
+    public final void onMediaSourceUpdated(MediaItem mediaItem, MediaSource mediaSource) {
+        Util.postOrRun(this.applicationHandler, new u(this, mediaItem, mediaSource, 1));
+    }
+
+    public final void onSkipped(MediaSource mediaSource, w wVar) {
+        Util.postOrRun(this.applicationHandler, new a(this, mediaSource, wVar, 0));
+    }
+
+    public final void onSourceCleared() {
+        synchronized (this.lock) {
+            this.indexForSourceHolderToClear--;
+        }
+    }
+
+    public abstract void preloadMediaSourceHolderInternal(BasePreloadManager<T, PreloadStatusT>.MediaSourceHolder mediaSourceHolder, PreloadStatusT preloadstatust);
+
+    public final void release() {
+        reset();
+        releaseInternal();
+        clearListeners();
+    }
+
+    public void releaseInternal() {
+    }
+
+    public void releaseMediaSourceHolderInternal(BasePreloadManager<T, PreloadStatusT>.MediaSourceHolder mediaSourceHolder) {
+        mediaSourceHolder.release();
+    }
+
+    public final boolean remove(MediaItem mediaItem) {
+        BasePreloadManager<T, PreloadStatusT>.MediaSourceHolder mediaSourceHolder = this.mediaSourceHolderMap.get(mediaItem);
+        if (mediaSourceHolder == null) {
+            return false;
+        }
+        releaseMediaSourceHolderInternal(mediaSourceHolder);
+        this.mediaSourceHolderMap.remove(mediaItem);
+        if (!isCurrentlyPreloading(mediaSourceHolder)) {
+            return true;
+        }
+        maybeAdvanceToNextMediaSourceHolder();
+        return true;
+    }
+
+    public void removeListener(PreloadManagerListener preloadManagerListener) {
+        verifyApplicationThread();
+        this.listeners.remove(preloadManagerListener);
+    }
+
+    public final void removeMediaItems(List<MediaItem> list) {
+        BasePreloadManager<T, PreloadStatusT>.MediaSourceHolder currentlyPreloadingMediaSourceHolder;
+        for (MediaItem mediaItem : list) {
+            BasePreloadManager<T, PreloadStatusT>.MediaSourceHolder mediaSourceHolder = this.mediaSourceHolderMap.get(mediaItem);
+            if (mediaSourceHolder != null) {
+                releaseMediaSourceHolderInternal(mediaSourceHolder);
+                this.mediaSourceHolderMap.remove(mediaItem);
+            }
+        }
+        synchronized (this.lock) {
+            currentlyPreloadingMediaSourceHolder = getCurrentlyPreloadingMediaSourceHolder();
+        }
+        if (currentlyPreloadingMediaSourceHolder == null || !currentlyPreloadingMediaSourceHolder.isReleased()) {
+            return;
+        }
+        maybeAdvanceToNextMediaSourceHolder();
+    }
+
+    public final void removeMediaSources(List<MediaSource> list) {
+        BasePreloadManager<T, PreloadStatusT>.MediaSourceHolder currentlyPreloadingMediaSourceHolder;
+        for (MediaSource mediaSource : list) {
+            BasePreloadManager<T, PreloadStatusT>.MediaSourceHolder mediaSourceHolder = this.mediaSourceHolderMap.get(mediaSource);
+            if (mediaSourceHolder != null) {
+                releaseMediaSourceHolderInternal(mediaSourceHolder);
+                this.mediaSourceHolderMap.remove(mediaSource);
+            }
+        }
+        synchronized (this.lock) {
+            currentlyPreloadingMediaSourceHolder = getCurrentlyPreloadingMediaSourceHolder();
+        }
+        if (currentlyPreloadingMediaSourceHolder == null || !currentlyPreloadingMediaSourceHolder.isReleased()) {
+            return;
+        }
+        maybeAdvanceToNextMediaSourceHolder();
+    }
+
+    public final void reset() {
+        Iterator<BasePreloadManager<T, PreloadStatusT>.MediaSourceHolder> it = this.mediaSourceHolderMap.values().iterator();
+        while (it.hasNext()) {
+            releaseMediaSourceHolderInternal(it.next());
+        }
+        this.mediaSourceHolderMap.clear();
+        synchronized (this.lock) {
+            resetSourceHolderPriorityList();
+            this.targetPreloadStatusOfCurrentPreloadingSource = null;
+        }
+    }
+
+    public boolean shouldStartPreloadingNextSource() {
+        return true;
+    }
+
+    public final void add(MediaSource mediaSource, T t6) {
+        BasePreloadManager<T, PreloadStatusT>.MediaSourceHolder createMediaSourceHolder = createMediaSourceHolder(mediaSource.getMediaItem(), mediaSource, t6);
+        this.mediaSourceHolderMap.put(createMediaSourceHolder.mediaItem, createMediaSourceHolder.getMediaSource(), createMediaSourceHolder);
+    }
+
+    public final void onCompleted(MediaItem mediaItem, w wVar) {
+        this.applicationHandler.post(new u(this, mediaItem, wVar, 2));
+    }
+
+    public final void onError(PreloadException preloadException, MediaItem mediaItem, w wVar) {
+        this.applicationHandler.post(new Y2.a(this, mediaItem, wVar, preloadException, 1));
+    }
+
+    public final boolean remove(MediaSource mediaSource) {
+        BasePreloadManager<T, PreloadStatusT>.MediaSourceHolder mediaSourceHolder = this.mediaSourceHolderMap.get(mediaSource);
+        if (mediaSourceHolder == null) {
+            return false;
+        }
+        releaseMediaSourceHolderInternal(mediaSourceHolder);
+        this.mediaSourceHolderMap.remove(mediaSource);
+        if (!isCurrentlyPreloading(mediaSourceHolder)) {
+            return true;
+        }
+        maybeAdvanceToNextMediaSourceHolder();
+        return true;
+    }
+
+    public final PreloadStatusT getTargetPreloadStatusIfCurrentlyPreloading(MediaItem mediaItem) {
+        synchronized (this.lock) {
+            try {
+                BasePreloadManager<T, PreloadStatusT>.MediaSourceHolder currentlyPreloadingMediaSourceHolder = getCurrentlyPreloadingMediaSourceHolder();
+                if (currentlyPreloadingMediaSourceHolder != null && mediaItem.equals(currentlyPreloadingMediaSourceHolder.mediaItem)) {
+                    return this.targetPreloadStatusOfCurrentPreloadingSource;
+                }
+                return null;
+            } finally {
+            }
+        }
+    }
+}

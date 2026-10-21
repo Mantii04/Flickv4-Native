@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout android:orientation="vertical" android:background="@drawable/focused_item_tv" android:focusable="true" android:clickable="true" android:layout_width="match_parent" android:layout_height="60.0dp"
+  xmlns:android="http://schemas.android.com/apk/res/android">
+    <View android:background="#3dffffff" android:layout_width="match_parent" android:layout_height="1.0dp" />
+    <TextView android:textSize="16.0sp" android:textStyle="bold" android:textColor="#ffffff" android:ellipsize="end" android:id="@id/link_main_label" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginLeft="15.0dp" android:layout_marginTop="5.0dp" android:layout_marginBottom="5.0dp" android:text="" android:maxLines="1" android:fontFamily="@font/product_sans_bold" />
+    <TextView android:textSize="11.0sp" android:textStyle="bold" android:textColor="#ffffff" android:ellipsize="end" android:id="@id/link_detail_view" android:fadingEdge="horizontal" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginLeft="15.0dp" android:text="Dire" android:maxLines="1" android:lines="1" android:singleLine="true" android:fontFamily="@font/product_sans_egular" />
+</LinearLayout>

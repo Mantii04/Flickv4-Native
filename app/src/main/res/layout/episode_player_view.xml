@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout android:orientation="vertical" android:id="@id/image_back" android:background="@drawable/round_corner_back_no_transparency" android:focusable="true" android:clickable="true" android:layout_width="match_parent" android:layout_height="wrap_content"
+  xmlns:android="http://schemas.android.com/apk/res/android">
+    <TextView android:textSize="25.0sp" android:textStyle="bold" android:textColor="#000000" android:gravity="left" android:id="@id/rowTextView" android:padding="3.0dp" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginLeft="15.0dp" android:text="Episode" android:maxLines="1" android:layout_centerInParent="true" android:fontFamily="@font/product_sans_egular" />
+</RelativeLayout>

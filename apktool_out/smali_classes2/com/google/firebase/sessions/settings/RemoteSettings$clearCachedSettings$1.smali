@@ -1,0 +1,240 @@
+.class final Lcom/google/firebase/sessions/settings/RemoteSettings$clearCachedSettings$1;
+.super Lkotlin/coroutines/jvm/internal/SuspendLambda;
+.source "SourceFile"
+
+# interfaces
+.implements LH5/p;
+
+
+# annotations
+.annotation runtime LA5/d;
+    c = "com.google.firebase.sessions.settings.RemoteSettings$clearCachedSettings$1"
+    f = "RemoteSettings.kt"
+    l = {
+        0x97
+    }
+    m = "invokeSuspend"
+.end annotation
+
+.annotation system Ldalvik/annotation/EnclosingMethod;
+    value = Lcom/google/firebase/sessions/settings/RemoteSettings;->clearCachedSettings$com_google_firebase_firebase_sessions()V
+.end annotation
+
+.annotation system Ldalvik/annotation/InnerClass;
+    accessFlags = 0x19
+    name = null
+.end annotation
+
+.annotation system Ldalvik/annotation/Signature;
+    value = {
+        "Lkotlin/coroutines/jvm/internal/SuspendLambda;",
+        "LH5/p;"
+    }
+.end annotation
+
+
+# instance fields
+.field label:I
+
+.field final synthetic this$0:Lcom/google/firebase/sessions/settings/RemoteSettings;
+
+
+# direct methods
+.method public constructor <init>(Lcom/google/firebase/sessions/settings/RemoteSettings;Ly5/c;)V
+    .locals 0
+    .annotation system Ldalvik/annotation/Signature;
+        value = {
+            "(",
+            "Lcom/google/firebase/sessions/settings/RemoteSettings;",
+            "Ly5/c;",
+            ")V"
+        }
+    .end annotation
+
+    .line 1
+    iput-object p1, p0, Lcom/google/firebase/sessions/settings/RemoteSettings$clearCachedSettings$1;->this$0:Lcom/google/firebase/sessions/settings/RemoteSettings;
+
+    .line 2
+    .line 3
+    const/4 p1, 0x2
+
+    .line 4
+    invoke-direct {p0, p1, p2}, Lkotlin/coroutines/jvm/internal/SuspendLambda;-><init>(ILy5/c;)V
+
+    .line 5
+    .line 6
+    .line 7
+    return-void
+.end method
+
+
+# virtual methods
+.method public final create(Ljava/lang/Object;Ly5/c;)Ly5/c;
+    .locals 1
+    .annotation system Ldalvik/annotation/Signature;
+        value = {
+            "(",
+            "Ljava/lang/Object;",
+            "Ly5/c;",
+            ")",
+            "Ly5/c;"
+        }
+    .end annotation
+
+    .line 1
+    new-instance p1, Lcom/google/firebase/sessions/settings/RemoteSettings$clearCachedSettings$1;
+
+    .line 2
+    .line 3
+    iget-object v0, p0, Lcom/google/firebase/sessions/settings/RemoteSettings$clearCachedSettings$1;->this$0:Lcom/google/firebase/sessions/settings/RemoteSettings;
+
+    .line 4
+    .line 5
+    invoke-direct {p1, v0, p2}, Lcom/google/firebase/sessions/settings/RemoteSettings$clearCachedSettings$1;-><init>(Lcom/google/firebase/sessions/settings/RemoteSettings;Ly5/c;)V
+
+    .line 6
+    .line 7
+    .line 8
+    return-object p1
+.end method
+
+.method public final invoke(LR5/I;Ly5/c;)Ljava/lang/Object;
+    .locals 0
+    .annotation system Ldalvik/annotation/Signature;
+        value = {
+            "(",
+            "LR5/I;",
+            "Ly5/c;",
+            ")",
+            "Ljava/lang/Object;"
+        }
+    .end annotation
+
+    .line 1
+    invoke-virtual {p0, p1, p2}, Lcom/google/firebase/sessions/settings/RemoteSettings$clearCachedSettings$1;->create(Ljava/lang/Object;Ly5/c;)Ly5/c;
+
+    move-result-object p1
+
+    check-cast p1, Lcom/google/firebase/sessions/settings/RemoteSettings$clearCachedSettings$1;
+
+    sget-object p2, Lu5/j;->a:Lu5/j;
+
+    invoke-virtual {p1, p2}, Lcom/google/firebase/sessions/settings/RemoteSettings$clearCachedSettings$1;->invokeSuspend(Ljava/lang/Object;)Ljava/lang/Object;
+
+    move-result-object p1
+
+    return-object p1
+.end method
+
+.method public bridge synthetic invoke(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+    .locals 0
+
+    .line 2
+    check-cast p1, LR5/I;
+
+    check-cast p2, Ly5/c;
+
+    invoke-virtual {p0, p1, p2}, Lcom/google/firebase/sessions/settings/RemoteSettings$clearCachedSettings$1;->invoke(LR5/I;Ly5/c;)Ljava/lang/Object;
+
+    move-result-object p1
+
+    return-object p1
+.end method
+
+.method public final invokeSuspend(Ljava/lang/Object;)Ljava/lang/Object;
+    .locals 3
+
+    .line 1
+    invoke-static {}, Lz5/a;->getCOROUTINE_SUSPENDED()Ljava/lang/Object;
+
+    .line 2
+    .line 3
+    .line 4
+    move-result-object v0
+
+    .line 5
+    iget v1, p0, Lcom/google/firebase/sessions/settings/RemoteSettings$clearCachedSettings$1;->label:I
+
+    .line 6
+    .line 7
+    const/4 v2, 0x1
+
+    .line 8
+    if-eqz v1, :cond_1
+
+    .line 9
+    .line 10
+    if-ne v1, v2, :cond_0
+
+    .line 11
+    .line 12
+    invoke-static {p1}, Lkotlin/b;->throwOnFailure(Ljava/lang/Object;)V
+
+    .line 13
+    .line 14
+    .line 15
+    goto :goto_0
+
+    .line 16
+    :cond_0
+    new-instance p1, Ljava/lang/IllegalStateException;
+
+    .line 17
+    .line 18
+    const-string v0, "call to \'resume\' before \'invoke\' with coroutine"
+
+    .line 19
+    .line 20
+    invoke-direct {p1, v0}, Ljava/lang/IllegalStateException;-><init>(Ljava/lang/String;)V
+
+    .line 21
+    .line 22
+    .line 23
+    throw p1
+
+    .line 24
+    :cond_1
+    invoke-static {p1}, Lkotlin/b;->throwOnFailure(Ljava/lang/Object;)V
+
+    .line 25
+    .line 26
+    .line 27
+    iget-object p1, p0, Lcom/google/firebase/sessions/settings/RemoteSettings$clearCachedSettings$1;->this$0:Lcom/google/firebase/sessions/settings/RemoteSettings;
+
+    .line 28
+    .line 29
+    invoke-static {p1}, Lcom/google/firebase/sessions/settings/RemoteSettings;->access$getSettingsCache$p(Lcom/google/firebase/sessions/settings/RemoteSettings;)Lcom/google/firebase/sessions/settings/SettingsCache;
+
+    .line 30
+    .line 31
+    .line 32
+    move-result-object p1
+
+    .line 33
+    iput v2, p0, Lcom/google/firebase/sessions/settings/RemoteSettings$clearCachedSettings$1;->label:I
+
+    .line 34
+    .line 35
+    invoke-virtual {p1, p0}, Lcom/google/firebase/sessions/settings/SettingsCache;->removeConfigs$com_google_firebase_firebase_sessions(Ly5/c;)Ljava/lang/Object;
+
+    .line 36
+    .line 37
+    .line 38
+    move-result-object p1
+
+    .line 39
+    if-ne p1, v0, :cond_2
+
+    .line 40
+    .line 41
+    return-object v0
+
+    .line 42
+    :cond_2
+    :goto_0
+    sget-object p1, Lu5/j;->a:Lu5/j;
+
+    .line 43
+    .line 44
+    return-object p1
+.end method

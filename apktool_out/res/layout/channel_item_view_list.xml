@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout android:id="@id/rel_view" android:background="?android:selectableItemBackground" android:focusable="true" android:clickable="true" android:layout_width="match_parent" android:layout_height="60.0dp"
+  xmlns:android="http://schemas.android.com/apk/res/android">
+    <LinearLayout android:orientation="horizontal" android:focusable="false" android:clickable="false" android:layout_width="match_parent" android:layout_height="match_parent">
+        <RelativeLayout android:clickable="false" android:layout_width="60.0dp" android:layout_height="60.0dp">
+            <RelativeLayout android:background="@color/transparent" android:clickable="false" android:layout_width="50.0dp" android:layout_height="50.0dp" android:layout_centerInParent="true">
+                <ImageView android:id="@id/image_v" android:clickable="false" android:layout_width="match_parent" android:layout_height="match_parent" />
+            </RelativeLayout>
+        </RelativeLayout>
+        <RelativeLayout android:orientation="vertical" android:background="#4d000000" android:focusable="false" android:clickable="false" android:layout_width="match_parent" android:layout_height="match_parent" android:layout_margin="1.0dp">
+            <TextView android:textSize="14.0sp" android:textStyle="bold" android:textColor="@color/white" android:ellipsize="none" android:gravity="left|center" android:id="@id/channel_text_view" android:clickable="false" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginLeft="10.0dp" android:text="" android:maxLines="3" android:layout_centerInParent="true" />
+        </RelativeLayout>
+    </LinearLayout>
+</RelativeLayout>

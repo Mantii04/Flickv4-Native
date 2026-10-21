@@ -1,0 +1,89 @@
+package androidx.media3.exoplayer.drm;
+
+import P3.v;
+import android.net.Uri;
+import android.text.TextUtils;
+import androidx.media3.common.C;
+import androidx.media3.common.util.UnstableApi;
+import androidx.media3.datasource.DataSource;
+import androidx.media3.datasource.DataSpec;
+import androidx.media3.exoplayer.drm.ExoMediaDrm;
+import androidx.media3.exoplayer.drm.MediaDrmCallback;
+import com.google.common.collect.ImmutableMap;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
+@UnstableApi
+/* loaded from: classes.dex */
+public final class HttpMediaDrmCallback implements MediaDrmCallback {
+    private final DataSource.Factory dataSourceFactory;
+    private final String defaultLicenseUrl;
+    private final boolean forceDefaultLicenseUrl;
+    private final Map<String, String> keyRequestProperties;
+
+    public HttpMediaDrmCallback(String str, DataSource.Factory factory) {
+        this(str, false, factory);
+    }
+
+    public void clearAllKeyRequestProperties() {
+        synchronized (this.keyRequestProperties) {
+            this.keyRequestProperties.clear();
+        }
+    }
+
+    public void clearKeyRequestProperty(String str) {
+        v.checkNotNull(str);
+        synchronized (this.keyRequestProperties) {
+            this.keyRequestProperties.remove(str);
+        }
+    }
+
+    @Override // androidx.media3.exoplayer.drm.MediaDrmCallback
+    public MediaDrmCallback.Response executeKeyRequest(UUID uuid, ExoMediaDrm.KeyRequest keyRequest) throws MediaDrmCallbackException {
+        String licenseServerUrl = keyRequest.getLicenseServerUrl();
+        if (this.forceDefaultLicenseUrl || TextUtils.isEmpty(licenseServerUrl)) {
+            licenseServerUrl = this.defaultLicenseUrl;
+        }
+        if (TextUtils.isEmpty(licenseServerUrl)) {
+            DataSpec.Builder builder = new DataSpec.Builder();
+            Uri uri = Uri.EMPTY;
+            throw new MediaDrmCallbackException(builder.setUri(uri).build(), uri, ImmutableMap.of(), 0L, new IllegalStateException("No license URL"));
+        }
+        HashMap hashMap = new HashMap();
+        UUID uuid2 = C.PLAYREADY_UUID;
+        hashMap.put("Content-Type", uuid2.equals(uuid) ? "text/xml" : C.CLEARKEY_UUID.equals(uuid) ? "application/json" : "application/octet-stream");
+        if (uuid2.equals(uuid)) {
+            hashMap.put("SOAPAction", "http://schemas.microsoft.com/DRM/2007/03/protocols/AcquireLicense");
+        }
+        synchronized (this.keyRequestProperties) {
+            hashMap.putAll(this.keyRequestProperties);
+        }
+        return DrmUtil.executePost(this.dataSourceFactory.createDataSource(), licenseServerUrl, keyRequest.getData(), hashMap);
+    }
+
+    @Override // androidx.media3.exoplayer.drm.MediaDrmCallback
+    public MediaDrmCallback.Response executeProvisionRequest(UUID uuid, ExoMediaDrm.ProvisionRequest provisionRequest) throws MediaDrmCallbackException {
+        Charset charset = StandardCharsets.UTF_8;
+        byte[] concat = U3.b.concat("{\"signedRequest\":\"".getBytes(charset), provisionRequest.getData(), "\"}".getBytes(charset));
+        return DrmUtil.executePost(this.dataSourceFactory.createDataSource(), provisionRequest.getDefaultUrl(), concat, ImmutableMap.of("Content-Type", T3.a.f3677i.toString(), "Content-Length", String.valueOf(concat.length)));
+    }
+
+    public void setKeyRequestProperty(String str, String str2) {
+        v.checkNotNull(str);
+        v.checkNotNull(str2);
+        synchronized (this.keyRequestProperties) {
+            this.keyRequestProperties.put(str, str2);
+        }
+    }
+
+    public HttpMediaDrmCallback(String str, boolean z6, DataSource.Factory factory) {
+        v.checkArgument((z6 && TextUtils.isEmpty(str)) ? false : true);
+        this.dataSourceFactory = factory;
+        this.defaultLicenseUrl = str;
+        this.forceDefaultLicenseUrl = z6;
+        this.keyRequestProperties = new HashMap();
+    }
+}

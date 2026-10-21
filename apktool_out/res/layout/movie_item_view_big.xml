@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout android:id="@id/image_back" android:padding="2.0dp" android:focusable="true" android:clickable="true" android:layout_width="180.0dp" android:layout_height="240.0dp"
+  xmlns:android="http://schemas.android.com/apk/res/android">
+    <androidx.cardview.widget.CardView android:clickable="false" android:layout_width="match_parent" android:layout_height="wrap_content">
+        <LinearLayout android:orientation="vertical" android:background="@color/colorPrimaryDarklight" android:clickable="false" android:layout_width="match_parent" android:layout_height="240.0dp">
+            <RelativeLayout android:layout_width="wrap_content" android:layout_height="wrap_content">
+                <ImageView android:id="@id/image" android:clickable="false" android:layout_width="match_parent" android:layout_height="240.0dp" android:scaleType="fitXY" android:transitionName="poster_image" />
+                <RelativeLayout android:background="@drawable/gradient_anime" android:layout_width="match_parent" android:layout_height="70.0dp" android:layout_alignParentBottom="true">
+                    <LinearLayout android:orientation="vertical" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_alignParentBottom="true">
+                        <TextView android:textSize="18.0sp" android:textStyle="bold" android:textColor="#ffffff" android:ellipsize="end" android:gravity="left" android:layout_gravity="left" android:id="@id/title" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginLeft="5.0dp" android:layout_marginTop="5.0dp" android:layout_marginRight="5.0dp" android:text="" android:maxLines="1" />
+                        <TextView android:textSize="18.0sp" android:textStyle="bold" android:textColor="#bbbbbb" android:gravity="left" android:layout_gravity="left" android:id="@id/year_textview" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginLeft="5.0dp" android:layout_marginBottom="5.0dp" android:maxLines="1" />
+                    </LinearLayout>
+                </RelativeLayout>
+            </RelativeLayout>
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+</FrameLayout>

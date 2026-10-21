@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView android:background="@color/colorPrimaryDarklight" android:focusable="true" android:clickable="true" android:layout_width="90.0dp" android:layout_height="80.0dp" app:cardCornerRadius="10.0dp"
+  xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+    <RelativeLayout android:focusable="false" android:clickable="false" android:layout_width="match_parent" android:layout_height="match_parent">
+        <ImageView android:id="@id/poster_image" android:focusable="false" android:clickable="false" android:layout_width="match_parent" android:layout_height="match_parent" android:layout_centerInParent="true" />
+        <RelativeLayout android:id="@id/title_background" android:background="@drawable/background_episode_card" android:focusable="false" android:clickable="false" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_alignParentLeft="true" android:layout_alignParentBottom="true">
+            <TextView android:textSize="9.0sp" android:textColor="@color/white" android:id="@id/episode_title_card" android:focusable="false" android:clickable="false" android:layout_width="match_parent" android:layout_height="10.0dp" android:layout_marginLeft="3.0dp" android:layout_marginBottom="5.0dp" android:maxLines="1" android:shadowColor="@color/black" android:shadowDx="1.0" android:shadowDy="1.0" android:shadowRadius="2.0" android:fontFamily="@font/product_sans_bold" />
+        </RelativeLayout>
+        <ProgressBar android:layout_gravity="left|bottom" android:id="@id/progress_watching_main" android:focusable="false" android:visibility="gone" android:clickable="false" android:layout_width="match_parent" android:layout_height="1.5dp" android:layout_marginBottom="3.0dp" android:progressDrawable="@drawable/progress_drawable" android:layout_alignParentBottom="true" style="?android:progressBarStyleHorizontal" />
+        <ImageView android:focusable="false" android:clickable="false" android:layout_width="30.0dp" android:layout_height="30.0dp" android:src="@drawable/ic_play" android:layout_centerInParent="true" />
+    </RelativeLayout>
+</androidx.cardview.widget.CardView>

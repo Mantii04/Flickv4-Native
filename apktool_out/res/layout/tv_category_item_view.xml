@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout android:orientation="vertical" android:id="@id/image_back" android:background="@color/colorPrimaryDarklight" android:focusable="true" android:clickable="true" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_margin="4.0dp"
+  xmlns:android="http://schemas.android.com/apk/res/android">
+    <TextView android:textSize="17.0sp" android:textStyle="bold" android:textColor="@color/white" android:id="@id/rowTextView" android:padding="10.0dp" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Episode 1" />
+</LinearLayout>

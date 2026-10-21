@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout android:orientation="vertical" android:id="@id/main_relative_view" android:background="#263984" android:layout_width="match_parent" android:layout_height="match_parent"
+  xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+    <LinearLayout android:gravity="center_horizontal" android:layout_gravity="center_horizontal" android:orientation="horizontal" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="30.0dp">
+        <LinearLayout android:orientation="horizontal" android:background="@drawable/round_corner_search_activity" android:focusable="false" android:clickable="false" android:layout_width="400.0dp" android:layout_height="40.0dp" android:layout_marginLeft="20.0dp">
+            <ImageView android:layout_gravity="center_vertical" android:focusable="false" android:layout_width="22.0dp" android:layout_height="22.0dp" android:layout_marginLeft="10.0dp" android:src="@drawable/ic_action_search" />
+            <TextView android:textColor="@color/white" android:layout_gravity="center_vertical" android:id="@id/query_text_view" android:focusable="false" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginLeft="10.0dp" android:text="Search anime by title" />
+        </LinearLayout>
+        <com.github.ybq.android.spinkit.SpinKitView android:gravity="center_horizontal" android:layout_gravity="center" android:id="@id/loader" android:visibility="gone" android:layout_width="25.0dp" android:layout_height="25.0dp" android:layout_marginLeft="20.0dp" android:indeterminate="true" app:SpinKit_Color="@color/white" style="@style/SpinKitView.Large.Circle" />
+    </LinearLayout>
+    <LinearLayout android:orientation="horizontal" android:layout_width="match_parent" android:layout_height="match_parent" android:layout_marginTop="20.0dp">
+        <LinearLayout android:orientation="vertical" android:layout_width="280.0dp" android:layout_height="match_parent" android:layout_marginLeft="20.0dp">
+            <LinearLayout android:orientation="horizontal" android:layout_width="match_parent" android:layout_height="35.0dp">
+                <RelativeLayout android:id="@id/button_blank_space" android:background="@drawable/round_corner_search_activity_clickable_static" android:focusable="true" android:nextFocusUp="@id/button_search_mic" android:nextFocusDown="@id/recycler_view_letters" android:clickable="true" android:layout_width="130.0dp" android:layout_height="match_parent">
+                    <ImageView android:layout_width="wrap_content" android:layout_height="wrap_content" android:src="@drawable/ic_action_space_bar" android:scaleType="fitCenter" android:layout_centerInParent="true" android:scaleX="2.0" />
+                </RelativeLayout>
+                <View android:layout_width="0.0dp" android:layout_height="0.0dp" android:layout_weight="1.0" />
+                <RelativeLayout android:id="@id/button_back_space" android:background="@drawable/round_corner_search_activity_clickable_static" android:focusable="true" android:nextFocusUp="@id/button_search_mic" android:clickable="true" android:layout_width="130.0dp" android:layout_height="match_parent" android:layout_marginLeft="10.0dp">
+                    <ImageView android:layout_width="wrap_content" android:layout_height="wrap_content" android:src="@drawable/ic_action_back_space" android:scaleType="fitCenter" android:layout_centerInParent="true" />
+                </RelativeLayout>
+            </LinearLayout>
+            <LinearLayout android:orientation="vertical" android:background="#3d000000" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10.0dp">
+                <androidx.recyclerview.widget.RecyclerView android:id="@id/recycler_view_letters" android:background="@color/transparent" android:nextFocusUp="@id/button_blank_space" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10.0dp" />
+                <View android:background="#3dffffff" android:layout_width="match_parent" android:layout_height="0.6dp" android:layout_marginLeft="5.0dp" android:layout_marginTop="10.0dp" android:layout_marginRight="5.0dp" />
+                <androidx.recyclerview.widget.RecyclerView android:id="@id/recycler_view_letters_numeric" android:background="@color/transparent" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10.0dp" />
+            </LinearLayout>
+            <LinearLayout android:orientation="horizontal" android:layout_width="match_parent" android:layout_height="wrap_content">
+                <RelativeLayout android:id="@id/clear_button" android:background="@drawable/round_corner_search_activity_clickable_static" android:focusable="true" android:clickable="true" android:layout_width="100.0dp" android:layout_height="40.0dp" android:layout_marginTop="10.0dp">
+                    <TextView android:textSize="16.0sp" android:gravity="center" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Clear" android:layout_centerInParent="true" />
+                </RelativeLayout>
+                <View android:layout_width="0.0dp" android:layout_height="0.0dp" android:layout_weight="1.0" />
+                <RelativeLayout android:id="@id/search_button" android:background="@drawable/round_corner_search_activity_clickable_static" android:focusable="true" android:clickable="true" android:layout_width="120.0dp" android:layout_height="40.0dp" android:layout_marginTop="10.0dp">
+                    <TextView android:textSize="16.0sp" android:gravity="center" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginLeft="20.0dp" android:text="Search" android:drawableLeft="@drawable/ic_action_search" android:layout_centerInParent="true" />
+                </RelativeLayout>
+            </LinearLayout>
+        </LinearLayout>
+        <LinearLayout android:orientation="vertical" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginLeft="20.0dp">
+            <TextView android:textSize="16.0sp" android:id="@id/discover_text_view" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Popular Searches on FlixVision" />
+            <androidx.recyclerview.widget.RecyclerView android:id="@id/recyclerview" android:nextFocusUp="@id/button_search_mic" android:layout_width="match_parent" android:layout_height="match_parent" android:layout_marginTop="15.0dp" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

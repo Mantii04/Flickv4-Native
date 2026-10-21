@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout android:id="@id/activity_player" android:background="@color/mocie_item_color" android:layout_width="match_parent" android:layout_height="match_parent"
+  xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+    <com.malinskiy.superrecyclerview.SuperRecyclerView android:id="@id/recyclerview" android:scrollbars="none" android:nextFocusUp="@id/toolbar" android:nextFocusDown="@id/recyclerview" android:layout_width="match_parent" android:layout_height="match_parent" android:layout_marginTop="60.0dp" app:mainLayoutId="@layout/layout_recyclerview_verticalscroll" app:recyclerClipToPadding="false" app:scrollbarStyle="insideInset" />
+    <ProgressBar android:id="@id/loader" android:visibility="gone" android:layout_width="70.0dp" android:layout_height="70.0dp" android:indeterminate="true" android:layout_centerInParent="true" />
+    <FrameLayout android:id="@id/toolbar_container" android:layout_width="match_parent" android:layout_height="wrap_content">
+        <androidx.appcompat.widget.Toolbar android:id="@id/toolbar" android:background="?colorPrimary" android:nextFocusLeft="@id/listview" android:nextFocusDown="@id/gridview" android:layout_width="match_parent" android:layout_height="?actionBarSize" app:elevation="0.0dp" />
+    </FrameLayout>
+    <RelativeLayout android:id="@id/bannerView" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_alignParentBottom="true" />
+</RelativeLayout>

@@ -1,0 +1,54 @@
+.class public final Landroidx/media/R$id;
+.super Ljava/lang/Object;
+.source "SourceFile"
+
+
+# annotations
+.annotation system Ldalvik/annotation/EnclosingClass;
+    value = Landroidx/media/R;
+.end annotation
+
+.annotation system Ldalvik/annotation/InnerClass;
+    accessFlags = 0x19
+    name = "id"
+.end annotation
+
+
+# static fields
+.field public static action0:I = 0x7f0b0049
+
+.field public static action_divider:I = 0x7f0b0061
+
+.field public static cancel_action:I = 0x7f0b0135
+
+.field public static chronometer:I = 0x7f0b0170
+
+.field public static end_padder:I = 0x7f0b0215
+
+.field public static icon:I = 0x7f0b02a1
+
+.field public static info:I = 0x7f0b02b9
+
+.field public static line1:I = 0x7f0b0317
+
+.field public static line3:I = 0x7f0b0318
+
+.field public static media_actions:I = 0x7f0b0374
+
+.field public static media_controller_compat_view_tag:I = 0x7f0b0375
+
+.field public static notification_main_column:I = 0x7f0b0408
+
+.field public static notification_main_column_container:I = 0x7f0b0409
+
+.field public static right_side:I = 0x7f0b04b4
+
+.field public static status_bar_latest_event_content:I = 0x7f0b05a1
+
+.field public static text:I = 0x7f0b05d7
+
+.field public static text2:I = 0x7f0b05d8
+
+.field public static time:I = 0x7f0b05fb
+
+.field public static title:I = 0x7f0b05fc

@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "MovieHubNative"
+rootProject.name = "FlixVision"
 include(":app")

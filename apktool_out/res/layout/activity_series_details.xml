@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout android:orientation="vertical" android:layout_width="match_parent" android:layout_height="match_parent"
+  xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+    <RelativeLayout android:layout_width="match_parent" android:layout_height="match_parent">
+        <ImageView android:id="@id/poster" android:focusable="false" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="centerCrop" />
+        <FrameLayout android:background="#000000" android:focusable="false" android:layout_width="match_parent" android:layout_height="match_parent" android:alpha="0.7" />
+    </RelativeLayout>
+    <LinearLayout android:orientation="vertical" android:layout_width="match_parent" android:layout_height="match_parent">
+        <LinearLayout android:orientation="vertical" android:layout_width="match_parent" android:layout_height="0.0dp" android:layout_marginLeft="20.0dp" android:layout_marginTop="20.0dp" android:layout_weight="0.2">
+            <TextView android:textSize="35.0sp" android:textStyle="bold" android:textColor="@color/white" android:ellipsize="end" android:layout_gravity="left" android:id="@id/movie_title" android:focusable="false" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Games of Throne" android:maxLines="1" android:fontFamily="@font/product_sans_egular" />
+            <LinearLayout android:orientation="horizontal" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="5.0dp">
+                <TextView android:textSize="15.0sp" android:id="@id/info_text_view" android:focusable="false" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="2018  12 Seasons" android:maxLines="1" android:fontFamily="@font/product_sans_egular" />
+                <TextView android:textSize="13.0sp" android:textColor="@color/accent" android:id="@id/last_episode_text_view" android:focusable="false" android:visibility="gone" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginLeft="3.0dp" android:maxLines="1" android:fontFamily="@font/product_sans_egular" />
+            </LinearLayout>
+            <RelativeLayout android:orientation="vertical" android:id="@id/season_button" android:background="@drawable/round_corner_back_button_static" android:focusable="true" android:clickable="true" android:layout_width="130.0dp" android:layout_height="40.0dp" android:layout_marginTop="10.0dp">
+                <LinearLayout android:gravity="center" android:orientation="horizontal" android:layout_width="match_parent" android:layout_height="match_parent">
+                    <ImageView android:layout_gravity="center" android:layout_width="20.0dp" android:layout_height="20.0dp" android:layout_marginLeft="10.0dp" android:src="@drawable/ic_baseline_expand_more_24" app:tint="@color/black" />
+                    <TextView android:textSize="14.0sp" android:textStyle="bold" android:textColor="@color/black" android:gravity="center" android:id="@id/season_label_view" android:padding="3.0dp" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginRight="4.0dp" android:text="Season 12" android:maxLines="1" android:layout_centerInParent="true" android:fontFamily="@font/product_sans_egular" android:textAlignment="center" />
+                </LinearLayout>
+            </RelativeLayout>
+            <TextView android:textSize="15.0sp" android:id="@id/season_info_text_view" android:focusable="false" android:visibility="gone" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="10.0dp" android:layout_marginRight="5.0dp" android:text="season overview" android:maxLines="1" android:fontFamily="@font/product_sans_egular" />
+        </LinearLayout>
+        <View android:background="@color/white" android:layout_width="match_parent" android:layout_height="1.0dp" android:layout_marginLeft="5.0dp" android:layout_marginTop="10.0dp" android:layout_marginRight="5.0dp" android:layout_marginBottom="30.0dp" />
+        <LinearLayout android:orientation="vertical" android:layout_width="match_parent" android:layout_height="0.0dp" android:layout_weight="0.85">
+            <androidx.recyclerview.widget.RecyclerView android:layout_gravity="center_vertical" android:id="@id/recyclerview_episodes" android:focusable="true" android:visibility="visible" android:scrollbars="none" android:nextFocusLeft="@id/recyclerview_seasons" android:nextFocusUp="@id/recyclerview_seasons" android:nextFocusDown="@id/recyclerview_from_cast" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginLeft="25.0dp" />
+        </LinearLayout>
+    </LinearLayout>
+</RelativeLayout>

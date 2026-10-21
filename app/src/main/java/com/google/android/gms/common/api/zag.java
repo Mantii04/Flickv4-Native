@@ -1,0 +1,12 @@
+package com.google.android.gms.common.api;
+
+import com.google.android.gms.common.api.Result;
+import com.google.android.gms.common.api.internal.BasePendingResult;
+
+/* loaded from: classes.dex */
+final class zag<R extends Result> extends BasePendingResult<R> {
+    @Override // com.google.android.gms.common.api.internal.BasePendingResult
+    public final R createFailedResult(Status status) {
+        return null;
+    }
+}

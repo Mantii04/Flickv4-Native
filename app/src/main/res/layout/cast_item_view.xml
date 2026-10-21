@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout android:orientation="vertical" android:focusable="true" android:clickable="true" android:layout_width="120.0dp" android:layout_height="wrap_content"
+  xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+    <de.hdodenhof.circleimageview.CircleImageView android:layout_gravity="center_horizontal" android:id="@id/image_cast" android:layout_width="100.0dp" android:layout_height="100.0dp" app:civ_border_color="@color/transparent" app:civ_border_width="2.0dp" />
+    <TextView android:textSize="13.0sp" android:textColor="#ffffff" android:ellipsize="end" android:gravity="center" android:layout_gravity="center_horizontal" android:id="@id/cast_name" android:paddingTop="3.0dp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="" android:maxLines="1" android:lines="1" android:singleLine="true" />
+    <TextView android:textSize="10.0sp" android:textColor="#adffffff" android:ellipsize="end" android:gravity="center" android:layout_gravity="center_horizontal" android:id="@id/cast_name_actor" android:paddingTop="3.0dp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="" android:lines="1" android:singleLine="true" />
+</LinearLayout>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout android:orientation="vertical" android:background="?android:selectableItemBackground" android:focusable="true" android:clickable="true" android:layout_width="match_parent" android:layout_height="71.0dp"
+  xmlns:android="http://schemas.android.com/apk/res/android">
+    <LinearLayout android:orientation="horizontal" android:layout_width="match_parent" android:layout_height="70.0dp">
+        <RelativeLayout android:gravity="center" android:layout_width="0.0dp" android:layout_height="match_parent" android:layout_margin="5.0dp" android:layout_weight="15.0">
+            <ImageView android:id="@id/url_icon" android:layout_width="40.0dp" android:layout_height="30.0dp" android:src="@drawable/tv_pack" android:layout_centerInParent="true" />
+        </RelativeLayout>
+        <RelativeLayout android:layout_width="0.0dp" android:layout_height="match_parent" android:layout_weight="70.0">
+            <LinearLayout android:orientation="vertical" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginLeft="10.0dp" android:layout_marginRight="10.0dp" android:layout_centerInParent="true">
+                <TextView android:textSize="25.0sp" android:id="@id/item_histoty_name" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="link name" android:maxLines="1" />
+                <TextView android:textSize="13.0sp" android:ellipsize="marquee" android:id="@id/item_histoty_url" android:focusable="true" android:focusableInTouchMode="true" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="5.0dp" android:text="https:7/kkskkkslink name" android:scrollHorizontally="true" android:singleLine="true" android:marqueeRepeatLimit="marquee_forever" />
+            </LinearLayout>
+        </RelativeLayout>
+        <RelativeLayout android:focusable="false" android:clickable="false" android:layout_width="0.0dp" android:layout_height="match_parent" android:layout_weight="15.0">
+            <ImageButton android:id="@id/option_button" android:focusable="false" android:clickable="false" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_centerInParent="true" style="?android:actionOverflowButtonStyle" />
+        </RelativeLayout>
+    </LinearLayout>
+    <View android:layout_width="match_parent" android:layout_height="1.0dp" />
+</LinearLayout>

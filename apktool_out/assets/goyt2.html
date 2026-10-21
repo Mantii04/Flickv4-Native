@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style type="text/css">
+        body { margin: 0; background: #000; overflow: hidden; font-family: "Arial", sans-serif; }
+
+               iframe {
+            display: block;
+            background: #000;
+            border: none;
+
+            /* --- THE HACK --- */
+            /* Make iframe 3x height and push it up */
+            width: 100vw;
+            height: 300vh;
+            position: absolute;
+            top: -100vh;
+            left: 0;
+            /* ---------------- */
+
+            pointer-events: none; /* Let the overlay catch clicks */
+        }
+
+        /* Transparent overlay to catch screen taps. Acts as a blackout curtain at the end! */
+        #click-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 5;
+            background-color: transparent;
+            transition: background-color 0.3s;
+        }
+
+        /* Central Buttons (Play, Pause, Reload) */
+        .center-btn {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background-color: rgba(1, 163, 248, 0.75);
+            color: white;
+            font-size: 48px;
+            text-align: center;
+            line-height: 120px;
+            cursor: pointer;
+            display: none;
+            z-index: 10;
+            box-sizing: border-box;
+            transition: opacity 0.3s;
+        }
+
+        /* Adjust icons individually for perfect optical centering */
+        #playBtn { padding-left: 8px; }
+        #pauseBtn { font-size: 36px; letter-spacing: 2px; font-weight: bold; }
+        #reloadBtn { padding-left: 0; }
+
+        /* Bottom Controls Container */
+        #controls-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100vw;
+            box-sizing: border-box;
+            padding: 30px 20px 20px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+            color: white;
+            z-index: 20;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            pointer-events: none; /* Let taps pass through empty areas */
+        }
+
+        .time-text {
+            font-size: 14px;
+            font-weight: bold;
+            min-width: 45px;
+            text-align: center;
+            text-shadow: 1px 1px 2px black;
+        }
+
+        /* Custom Beautiful Slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            margin: 0 15px;
+            background: transparent;
+            cursor: pointer;
+            pointer-events: auto; /* Re-enable taps specifically for the slider */
+        }
+
+        input[type=range]:focus {
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: transparent;
+            border-radius: 3px;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #01A3F8;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -6px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+
+<body>
+<div id="player"></div>
+
+<!-- Transparent overlay (Catches screen taps and blacks out native UI) -->
+<div id="click-overlay"></div>
+
+<!-- Central Buttons -->
+<div class="center-btn" id="playBtn">&#9654;</div>
+<div class="center-btn" id="pauseBtn">&#10073;&#10073;</div>
+<div class="center-btn" id="reloadBtn">&#8635;</div>
+
+<!-- Progress Bar Controls -->
+<div id="controls-container">
+    <span class="time-text" id="current-time">0:00</span>
+    <input type="range" id="progress-bar" min="0" max="100" value="0" step="0.1">
+    <span class="time-text" id="total-time">0:00</span>
+</div>
+
+<script>
+    // Load YouTube API
+    var tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    var firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+    var player;
+    var progressInterval;
+    var isDragging = false;
+    var hideTimeout;
+    var controlsVisible = false;
+
+    // UI Elements
+    const progressBar = document.getElementById('progress-bar');
+    const currentTimeText = document.getElementById('current-time');
+    const totalTimeText = document.getElementById('total-time');
+    const controlsContainer = document.getElementById('controls-container');
+    const clickOverlay = document.getElementById('click-overlay');
+    const playBtn = document.getElementById('playBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const reloadBtn = document.getElementById('reloadBtn');
+
+    function onYouTubeIframeAPIReady() {
+        const idd = "INJECT_VIDEO_ID_HERE";
+        player = new YT.Player('player', {
+            height: '100%',
+            width: '100%',
+            videoId: idd,
+            playerVars: {
+                'playsinline': 1,
+                'autoplay': 1,
+                'controls': 0,
+                'disablekb': 1,
+                'modestbranding': 1,
+                'iv_load_policy': 3,
+                'showinfo': 0,
+                'rel': 0,
+                'enablejsapi': 1,
+                'origin': 'https://localhost',
+                'widget_referrer': 'https://localhost'
+            },
+            events: {
+                'onReady': onPlayerReady,
+                'onStateChange': onPlayerStateChange
+            }
+        });
+    }
+
+    function onPlayerReady(event) {
+        event.target.playVideo();
+        updateSliderBackground(progressBar);
+    }
+
+    function onPlayerStateChange(event) {
+        if (event.data == YT.PlayerState.PLAYING) {
+
+            // Hide blackout curtain
+            clickOverlay.style.backgroundColor = "transparent";
+
+            startProgressSync();
+            showUI();
+
+        } else if (event.data == YT.PlayerState.PAUSED) {
+
+            stopProgressSync();
+            showUI();
+
+        } else if (event.data == YT.PlayerState.ENDED) {
+
+            stopProgressSync();
+            // Blackout YouTube's native end-screen completely
+            clickOverlay.style.backgroundColor = "#000";
+            showUI();
+
+        } else if (event.data == YT.PlayerState.BUFFERING) {
+            showUI();
+        }
+    }
+
+    // --- PROGRESS BAR LOGIC ---
+    function formatTime(time) {
+        if (isNaN(time) || time < 0) return "0:00";
+        const hours = Math.floor(time / 3600);
+        const minutes = Math.floor((time % 3600) / 60);
+        const seconds = Math.floor(time % 60);
+
+        if (hours > 0) {
+            return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    function updateSliderBackground(slider) {
+        const percentage = (slider.value / slider.max) * 100;
+        slider.style.background = `linear-gradient(to right, #01A3F8 ${percentage}%, #555 ${percentage}%)`;
+    }
+
+    function startProgressSync() {
+        clearInterval(progressInterval);
+        progressInterval = setInterval(() => {
+            if (!isDragging && player && player.getCurrentTime && player.getDuration) {
+                const currTime = player.getCurrentTime();
+                const duration = player.getDuration();
+                progressBar.max = duration;
+                progressBar.value = currTime;
+                currentTimeText.innerText = formatTime(currTime);
+                totalTimeText.innerText = formatTime(duration);
+                updateSliderBackground(progressBar);
+            }
+        }, 250);
+    }
+
+    function stopProgressSync() {
+        clearInterval(progressInterval);
+    }
+
+    progressBar.addEventListener('input', function() {
+        isDragging = true;
+        showUI();
+        currentTimeText.innerText = formatTime(this.value);
+        updateSliderBackground(this);
+    });
+
+    progressBar.addEventListener('change', function() {
+        player.seekTo(this.value, true);
+        isDragging = false;
+        showUI();
+    });
+
+    // --- UI VISIBILITY LOGIC ---
+
+    function showUI() {
+        controlsVisible = true;
+        controlsContainer.style.opacity = "1";
+
+        let state = player && player.getPlayerState ? player.getPlayerState() : -1;
+
+        // Show the correct button based on state
+        if (state === YT.PlayerState.ENDED) {
+            reloadBtn.style.display = 'block';
+            playBtn.style.display = 'none';
+            pauseBtn.style.display = 'none';
+        } else if (state === YT.PlayerState.PLAYING) {
+            pauseBtn.style.display = 'block';
+            playBtn.style.display = 'none';
+            reloadBtn.style.display = 'none';
+        } else { // Paused or unstarted
+            playBtn.style.display = 'block';
+            pauseBtn.style.display = 'none';
+            reloadBtn.style.display = 'none';
+        }
+
+        // Auto-hide only if playing
+        clearTimeout(hideTimeout);
+        if (state === YT.PlayerState.PLAYING) {
+            hideTimeout = setTimeout(hideUI, 3500); // Hides after 3.5 seconds
+        }
+    }
+
+    function hideUI() {
+        controlsVisible = false;
+        controlsContainer.style.opacity = "0";
+        playBtn.style.display = 'none';
+        pauseBtn.style.display = 'none';
+        reloadBtn.style.display = 'none';
+    }
+
+    // Tap the screen anywhere EXCEPT the buttons/slider to toggle UI
+    clickOverlay.addEventListener('click', function() {
+        if (controlsVisible) {
+            hideUI();
+        } else {
+            showUI();
+        }
+    });
+
+    // Keep UI awake if mouse moves over screen while playing
+    clickOverlay.addEventListener('mousemove', function() {
+        if (controlsVisible && player && player.getPlayerState() === YT.PlayerState.PLAYING) {
+            showUI();
+        }
+    });
+
+    // --- BUTTON ACTIONS ---
+
+    playBtn.addEventListener('click', function() {
+        player.playVideo();
+        showUI();
+    });
+
+    pauseBtn.addEventListener('click', function() {
+        player.pauseVideo();
+        showUI();
+    });
+
+    reloadBtn.addEventListener('click', function() {
+        player.seekTo(0, true);
+        player.playVideo();
+        showUI();
+    });
+
+</script>
+</body>
+</html>

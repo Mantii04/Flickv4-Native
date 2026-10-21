@@ -1,0 +1,20 @@
+package com.google.android.gms.dynamite;
+
+import android.os.Process;
+
+/* loaded from: classes.dex */
+final class zza extends Thread {
+    @Override // java.lang.Thread, java.lang.Runnable
+    public final void run() {
+        Process.setThreadPriority(19);
+        synchronized (this) {
+            while (true) {
+                try {
+                    wait();
+                } catch (InterruptedException unused) {
+                    return;
+                }
+            }
+        }
+    }
+}

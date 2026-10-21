@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout android:id="@id/watch_now_frame" android:background="@color/colorPrimaryDark" android:focusable="true" android:clickable="true" android:layout_width="match_parent" android:layout_height="match_parent" android:layout_margin="5.0dp"
+  xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+    <LinearLayout android:layout_gravity="center" android:orientation="vertical" android:id="@id/watch_now" android:background="?selectableItemBackgroundBorderless" android:padding="10.0dp" android:paddingLeft="2.0dp" android:nextFocusLeft="@id/storage" android:nextFocusRight="@id/history" android:nextFocusUp="@id/storage" android:nextFocusDown="@id/storage" android:clickable="true" android:layout_width="100.0dp" android:layout_height="100.0dp">
+        <ImageView android:layout_gravity="center_horizontal" android:id="@id/carousel_image" android:clickable="false" android:layout_width="match_parent" android:layout_height="match_parent" android:src="@drawable/ic_action_play" app:tint="@color/colorAccent" />
+        <TextView android:textSize="40.0sp" android:textColor="@color/colorAccent" android:id="@id/rowTextView" android:clickable="false" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8.0dp" android:text="Watch Now" android:maxLines="2" android:textAlignment="center" />
+    </LinearLayout>
+</FrameLayout>

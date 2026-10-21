@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout android:background="@android:color/black" android:layout_width="match_parent" android:layout_height="match_parent"
+  xmlns:android="http://schemas.android.com/apk/res/android">
+    <ImageView android:id="@id/slideshow_backdrop" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="centerCrop" />
+    <View android:layout_gravity="bottom" android:id="@id/gradient_overlay" android:background="@drawable/gradient_bottom_to_top" android:layout_width="match_parent" android:layout_height="match_parent" />
+    <ImageView android:layout_gravity="end|bottom" android:id="@id/slideshow_banner" android:layout_width="wrap_content" android:layout_height="45.0dp" android:layout_marginBottom="20.0dp" android:src="@drawable/fv_banner" android:scaleType="fitStart" android:adjustViewBounds="true" android:layout_marginEnd="30.0dp" />
+    <me.grantland.widget.AutofitTextView android:textSize="55.0sp" android:textStyle="bold" android:textColor="@color/white" android:ellipsize="end" android:gravity="bottom" android:layout_gravity="left|bottom" android:id="@id/movie_title" android:focusable="false" android:visibility="gone" android:layout_width="500.0dp" android:layout_height="wrap_content" android:layout_marginLeft="30.0dp" android:layout_marginBottom="65.0dp" android:text="" android:maxLines="1" android:fontFamily="@font/product_sans_bold" />
+    <ImageView android:layout_gravity="start|bottom" android:id="@id/slideshow_logo" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginBottom="30.0dp" android:scaleType="fitStart" android:adjustViewBounds="true" android:maxWidth="200.0dp" android:layout_marginStart="40.0dp" />
+</FrameLayout>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout android:id="@id/main_relative_view" android:background="@color/colorPrimaryDark_OLD" android:layout_width="match_parent" android:layout_height="match_parent"
+  xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+    <LinearLayout android:gravity="center_horizontal" android:orientation="vertical" android:padding="24.0dp" android:layout_width="360.0dp" android:layout_height="wrap_content" app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toTopOf="parent">
+        <LinearLayout android:gravity="center_vertical" android:orientation="horizontal" android:layout_width="wrap_content" android:layout_height="wrap_content">
+            <ImageView android:layout_width="48.0dp" android:layout_height="48.0dp" android:src="@drawable/torbox_logo" android:scaleType="centerCrop" />
+            <TextView android:textSize="30.0sp" android:textColor="@color/white" android:id="@id/adult_pin_entry_title" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="TorBox API Key" android:fontFamily="@font/product_sans_bold" android:layout_marginStart="12.0dp" />
+        </LinearLayout>
+        <TextView android:textSize="15.0sp" android:textColor="#a0a0a0" android:gravity="center" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12.0dp" android:text="Find your API Key at https://torbox.app/settings" android:fontFamily="@font/product_sans_egular" />
+        <EditText android:textColor="@color/white" android:textColorHint="#666666" android:id="@id/edit_text_enter_pin" android:background="@drawable/round_corner_back_edit_text" android:paddingLeft="16.0dp" android:paddingRight="16.0dp" android:layout_width="match_parent" android:layout_height="60.0dp" android:layout_marginTop="42.0dp" android:hint="Enter your API Key" android:singleLine="true" android:inputType="textVisiblePassword" android:imeOptions="actionDone" android:fontFamily="@font/product_sans_egular" android:paddingHorizontal="16.0dp" />
+        <LinearLayout android:orientation="horizontal" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="32.0dp">
+            <FrameLayout android:id="@id/cancel_button" android:background="@drawable/round_corner_back_button" android:focusable="true" android:nextFocusRight="@id/confirm_pin_button" android:nextFocusUp="@id/toolbar" android:nextFocusDown="@id/recyclerview" android:clickable="true" android:layout_width="0.0dp" android:layout_height="55.0dp" android:foreground="?selectableItemBackground" android:layout_weight="1.0" android:layout_marginEnd="8.0dp">
+                <TextView android:textSize="16.0sp" android:textColor="@color/black" android:layout_gravity="center" android:id="@id/save_label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="CANCEL" android:fontFamily="@font/product_sans_bold" />
+            </FrameLayout>
+            <FrameLayout android:id="@id/confirm_pin_button" android:background="@drawable/round_corner_back_button" android:focusable="true" android:nextFocusLeft="@id/cancel_button" android:nextFocusRight="@id/series_button" android:nextFocusUp="@id/toolbar" android:nextFocusDown="@id/recyclerview" android:clickable="true" android:layout_width="0.0dp" android:layout_height="55.0dp" android:foreground="?selectableItemBackground" android:layout_weight="1.0" android:layout_marginStart="8.0dp">
+                <TextView android:textSize="16.0sp" android:textColor="@color/black" android:layout_gravity="center" android:id="@id/confirm_adult_label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="CONFIRM" android:fontFamily="@font/product_sans_bold" />
+            </FrameLayout>
+        </LinearLayout>
+    </LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout android:gravity="center_vertical" android:orientation="horizontal" android:background="@drawable/bg_offset_panel" android:paddingTop="8.0dp" android:paddingBottom="8.0dp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:paddingStart="10.0dp" android:paddingEnd="10.0dp"
+  xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+    <TextView android:textSize="12.0sp" android:textStyle="bold" android:textColor="#aaaaaa" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="SYNC" android:fontFamily="sans-serif-medium" android:paddingStart="15.0dp" android:paddingEnd="15.0dp" />
+    <ImageButton android:id="@id/button_minus_offset" android:background="@drawable/selector_offset_button" android:nextFocusRight="@id/button_plus_offset" android:layout_width="45.0dp" android:layout_height="45.0dp" android:src="@drawable/remove_24px" app:tint="#ffffff" />
+    <TextView android:textSize="22.0sp" android:textColor="#ffffff" android:gravity="center" android:id="@id/value_text_view" android:layout_width="100.0dp" android:layout_height="wrap_content" android:text="0.0 s" android:fontFamily="sans-serif-black" />
+    <ImageButton android:id="@id/button_plus_offset" android:background="@drawable/selector_offset_button" android:nextFocusLeft="@id/button_minus_offset" android:layout_width="45.0dp" android:layout_height="45.0dp" android:src="@drawable/add_24px" app:tint="#ffffff" />
+    <ImageButton android:id="@id/button_set_finish" android:background="?selectableItemBackgroundBorderless" android:layout_width="35.0dp" android:layout_height="35.0dp" android:src="@drawable/close_24px" android:layout_marginStart="15.0dp" app:tint="#88ffffff" />
+</LinearLayout>

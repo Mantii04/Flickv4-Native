@@ -1,0 +1,18 @@
+package io.reactivex.internal.operators.flowable;
+
+import io.reactivex.Flowable;
+import io.reactivex.internal.subscriptions.EmptySubscription;
+import m6.c;
+
+/* loaded from: classes2.dex */
+public final class FlowableNever extends Flowable<Object> {
+    public static final Flowable<Object> INSTANCE = new FlowableNever();
+
+    private FlowableNever() {
+    }
+
+    @Override // io.reactivex.Flowable
+    public void subscribeActual(c cVar) {
+        cVar.onSubscribe(EmptySubscription.INSTANCE);
+    }
+}

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout android:background="#202933" android:fitsSystemWindows="true" android:layout_width="match_parent" android:layout_height="match_parent"
+  xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+    <RelativeLayout android:layout_width="match_parent" android:layout_height="match_parent" />
+    <com.airbnb.lottie.LottieAnimationView android:id="@id/animationView" android:layout_width="300.0dp" android:layout_height="wrap_content" android:layout_centerInParent="true" android:scaleX="1.2" android:scaleY="1.2" app:lottie_autoPlay="true" app:lottie_loop="false" app:lottie_rawRes="@raw/splash_lottie" app:lottie_speed="0.4" app:lottie_url="REPLACE_JSON_URL" />
+    <View android:layout_gravity="center|top" android:id="@id/emiter_bottom" android:layout_width="1.0dp" android:layout_height="1.0dp" />
+    <LinearLayout android:orientation="vertical" android:layout_width="match_parent" android:layout_height="wrap_content" android:weightSum="1.0" android:layout_alignParentBottom="true">
+        <LinearLayout android:gravity="center_horizontal" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="20.0dp">
+            <com.github.ybq.android.spinkit.SpinKitView android:gravity="center_horizontal" android:layout_gravity="center_horizontal" android:id="@id/loader" android:visibility="gone" android:layout_width="19.0dp" android:layout_height="19.0dp" android:indeterminate="true" app:SpinKit_Color="@color/white" style="@style/SpinKitView.Large.Circle" />
+        </LinearLayout>
+        <TextView android:textSize="12.0sp" android:textColor="@color/white" android:gravity="center_horizontal" android:id="@id/version" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="10.0dp" />
+    </LinearLayout>
+</RelativeLayout>
