@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -126,6 +127,9 @@ class PlayerActivity : ComponentActivity() {
         var videoHeight by remember { mutableStateOf(0) }
         var playError by remember { mutableStateOf<String?>(null) }
         var showProviderMenu by remember { mutableStateOf(false) }
+        
+        // 0 = FIT (Original), 1 = CROP (Zoom), 2 = FILL (Stretch)
+        var resizeMode by remember { mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT) }
 
         fun switchTo(index: Int) {
             if (index == currentIndex) return
@@ -146,7 +150,9 @@ class PlayerActivity : ComponentActivity() {
             if (exoPlayer != null) return@LaunchedEffect
 
             val myIndex = currentIndex
-            val trackSelector = DefaultTrackSelector(this@PlayerActivity).apply { setParameters(buildUponParameters().setPreferredAudioLanguage("en").setPreferredTextLanguage("en").build()) }
+            val trackSelector = DefaultTrackSelector(this@PlayerActivity).apply {
+                setParameters(buildUponParameters().setPreferredAudioLanguage("en").setPreferredTextLanguage("en").build())
+            }
             val httpClient = OkHttpClient.Builder()
                 .followRedirects(true)
                 .followSslRedirects(true)
@@ -158,6 +164,7 @@ class PlayerActivity : ComponentActivity() {
                 "videasy" -> "https://player.videasy.to/"
                 "videm"   -> "https://videm.xyz/"
                 "vixsrc"  -> "https://vixsrc.to/"
+                "modiplay"-> "https://rozgarlelo.modiplay.xyz/"
                 else      -> "https://vidsrc.buzz/"
             }
             val orig = ref.trimEnd('/')
@@ -279,7 +286,10 @@ class PlayerActivity : ComponentActivity() {
                         useController = false
                     }
                 },
-                update = { view -> view.player = exoPlayer; view.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM },
+                update = { view ->
+                    view.player = exoPlayer
+                    view.resizeMode = resizeMode
+                },
                 modifier = Modifier.fillMaxSize()
             )
 
@@ -299,7 +309,34 @@ class PlayerActivity : ComponentActivity() {
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.weight(1f).padding(start = 8.dp)
                         )
+                        
+                        // ASPECT RATIO TOGGLE
+                        Box(
+                            modifier = Modifier
+                                .padding(end = 12.dp)
+                                .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(6.dp))
+                                .clickable {
+                                    resizeMode = when (resizeMode) {
+                                        AspectRatioFrameLayout.RESIZE_MODE_FIT -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                                        AspectRatioFrameLayout.RESIZE_MODE_ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+                                        else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                                    }
+                                }
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                text = when (resizeMode) {
+                                    AspectRatioFrameLayout.RESIZE_MODE_FIT -> "FIT"
+                                    AspectRatioFrameLayout.RESIZE_MODE_ZOOM -> "CROP"
+                                    else -> "FILL"
+                                },
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
 
+                        // PROVIDER SWITCHER
                         Box {
                             Surface(
                                 color = Color.Black.copy(alpha = 0.65f),
@@ -310,31 +347,13 @@ class PlayerActivity : ComponentActivity() {
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                                 ) {
-                                    Icon(
-                                        Icons.Default.List,
-                                        contentDescription = "Providers",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(18.dp)
-                                    )
+                                    Icon(Icons.Default.List, contentDescription = "Providers", tint = Color.White, modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        (currentStream?.provider ?: "…").uppercase(),
-                                        color = Color.White,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Icon(
-                                        Icons.Default.ArrowDropDown,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(18.dp)
-                                    )
+                                    Text((currentStream?.provider ?: "…").uppercase(), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
                                 }
                             }
-                            DropdownMenu(
-                                expanded = showProviderMenu,
-                                onDismissRequest = { showProviderMenu = false }
-                            ) {
+                            DropdownMenu(expanded = showProviderMenu, onDismissRequest = { showProviderMenu = false }) {
                                 streams.forEachIndexed { index, stream ->
                                     val isCurrent = index == currentIndex
                                     val isFailed = index in failedIndices
@@ -342,46 +361,27 @@ class PlayerActivity : ComponentActivity() {
                                         text = {
                                             Row(verticalAlignment = Alignment.CenterVertically) {
                                                 Icon(
-                                                    when {
-                                                        isCurrent -> Icons.Default.Check
-                                                        isFailed -> Icons.Default.Close
-                                                        else -> Icons.Default.PlayArrow
-                                                    },
+                                                    when { isCurrent -> Icons.Default.Check; isFailed -> Icons.Default.Close; else -> Icons.Default.PlayArrow },
                                                     contentDescription = null,
-                                                    tint = when {
-                                                        isCurrent -> Color(0xFFE50914)
-                                                        isFailed -> Color.Gray
-                                                        else -> Color.White
-                                                    },
+                                                    tint = when { isCurrent -> Color(0xFFE50914); isFailed -> Color.Gray; else -> Color.White },
                                                     modifier = Modifier.size(18.dp)
                                                 )
                                                 Spacer(modifier = Modifier.width(8.dp))
                                                 Text(
                                                     (stream.provider ?: "unknown").uppercase(),
-                                                    color = when {
-                                                        isCurrent -> Color(0xFFE50914)
-                                                        isFailed -> Color.Gray
-                                                        else -> Color.White
-                                                    },
+                                                    color = when { isCurrent -> Color(0xFFE50914); isFailed -> Color.Gray; else -> Color.White },
                                                     fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal
                                                 )
                                             }
                                         },
-                                        onClick = {
-                                            showProviderMenu = false
-                                            switchTo(index)
-                                        }
+                                        onClick = { showProviderMenu = false; switchTo(index) }
                                     )
                                 }
                             }
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            when {
-                                playError != null -> "ERR"
-                                videoHeight > 0 -> "${videoHeight}p"
-                                else -> "..."
-                            },
+                            when { playError != null -> "ERR"; videoHeight > 0 -> "${videoHeight}p"; else -> "..." },
                             color = if (playError != null) Color.Yellow else Color(0xFFE50914),
                             fontSize = 12.sp,
                             modifier = Modifier.padding(end = 8.dp)
