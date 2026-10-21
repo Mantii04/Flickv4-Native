@@ -318,7 +318,7 @@ class PlayerActivity : ComponentActivity() {
                                 .clickable {
                                     resizeMode = when (resizeMode) {
                                         AspectRatioFrameLayout.RESIZE_MODE_FIT -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                                        AspectRatioFrameLayout.RESIZE_MODE_ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+                                        AspectRatioFrameLayout.RESIZE_MODE_ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                                         else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
                                     }
                                 }
