@@ -157,7 +157,7 @@ class PlayerActivity : ComponentActivity() {
 
             val myIndex = currentIndex
             val trackSelector = DefaultTrackSelector(this@PlayerActivity).apply {
-                setParameters(buildUponParameters().setPreferredAudioLanguage("en").setPreferredTextLanguage("en").build())
+                setParameters(buildUponParameters().setPreferredAudioLanguage("en").setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true).build())
             }
             val httpClient = OkHttpClient.Builder()
                 .followRedirects(true)
