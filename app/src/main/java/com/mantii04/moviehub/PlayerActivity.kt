@@ -1,13 +1,14 @@
 package com.mantii04.moviehub
 
 import android.content.pm.ActivityInfo
+import android.os.Build
 import android.os.Bundle
 import android.view.ViewGroup
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -54,6 +55,14 @@ class PlayerActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        
+        // Extend drawing under the camera cutout (FlixVision style)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            window.attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
+
         WindowInsetsControllerCompat(window, window.decorView).apply {
             hide(WindowInsetsCompat.Type.systemBars())
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
@@ -127,8 +136,6 @@ class PlayerActivity : ComponentActivity() {
         var videoHeight by remember { mutableStateOf(0) }
         var playError by remember { mutableStateOf<String?>(null) }
         var showProviderMenu by remember { mutableStateOf(false) }
-
-        var resizeMode by remember { mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT) }
 
         fun switchTo(index: Int) {
             if (index == currentIndex) return
@@ -287,7 +294,8 @@ class PlayerActivity : ComponentActivity() {
                 },
                 update = { view ->
                     view.player = exoPlayer
-                    view.resizeMode = resizeMode
+                    // Hardcode CROP (ZOOM) mode, no toggle needed
+                    view.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                 },
                 modifier = Modifier.fillMaxSize()
             )
@@ -308,31 +316,6 @@ class PlayerActivity : ComponentActivity() {
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.weight(1f).padding(start = 8.dp)
                         )
-
-                        Box(
-                            modifier = Modifier
-                                .padding(end = 12.dp)
-                                .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(6.dp))
-                                .clickable {
-                                    resizeMode = when (resizeMode) {
-                                        AspectRatioFrameLayout.RESIZE_MODE_FIT -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                                        AspectRatioFrameLayout.RESIZE_MODE_ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_FILL
-                                        else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
-                                    }
-                                }
-                                .padding(horizontal = 10.dp, vertical = 6.dp)
-                        ) {
-                            Text(
-                                text = when (resizeMode) {
-                                    AspectRatioFrameLayout.RESIZE_MODE_FIT -> "FIT"
-                                    AspectRatioFrameLayout.RESIZE_MODE_ZOOM -> "CROP"
-                                    else -> "FILL"
-                                },
-                                color = Color.White,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
 
                         Box {
                             Surface(
