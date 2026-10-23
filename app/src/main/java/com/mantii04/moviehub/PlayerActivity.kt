@@ -127,8 +127,7 @@ class PlayerActivity : ComponentActivity() {
         var videoHeight by remember { mutableStateOf(0) }
         var playError by remember { mutableStateOf<String?>(null) }
         var showProviderMenu by remember { mutableStateOf(false) }
-        
-        // 0 = FIT (Original), 1 = CROP (Zoom), 2 = FILL (Stretch)
+
         var resizeMode by remember { mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT) }
 
         fun switchTo(index: Int) {
@@ -158,14 +157,14 @@ class PlayerActivity : ComponentActivity() {
                 .followSslRedirects(true)
                 .build()
 
-            val providerName = cs.provider ?: "vidsrc"
-            val ref = when (providerName) {
-                "vidsrc"  -> "https://vidsrc.buzz/"
-                "videasy" -> "https://player.videasy.to/"
-                "videm"   -> "https://videm.xyz/"
-                "vixsrc"  -> "https://vixsrc.to/"
-                "modiplay"-> "https://rozgarlelo.modiplay.xyz/"
-                else      -> "https://vidsrc.buzz/"
+            val ref = when {
+                cs.videoUrl.contains("hanerix.com")      -> "https://hanerix.com/"
+                cs.videoUrl.contains("dash-hls-bridge")  -> "https://rozgarlelo.modiplay.xyz/"
+                cs.provider == "vidsrc"                  -> "https://vidsrc.buzz/"
+                cs.provider == "videasy"                 -> "https://player.videasy.to/"
+                cs.provider == "videm"                   -> "https://videm.xyz/"
+                cs.provider == "vixsrc"                  -> "https://vixsrc.to/"
+                else                                     -> "https://vidsrc.buzz/"
             }
             val orig = ref.trimEnd('/')
 
@@ -309,8 +308,7 @@ class PlayerActivity : ComponentActivity() {
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.weight(1f).padding(start = 8.dp)
                         )
-                        
-                        // ASPECT RATIO TOGGLE
+
                         Box(
                             modifier = Modifier
                                 .padding(end = 12.dp)
@@ -336,7 +334,6 @@ class PlayerActivity : ComponentActivity() {
                             )
                         }
 
-                        // PROVIDER SWITCHER
                         Box {
                             Surface(
                                 color = Color.Black.copy(alpha = 0.65f),
