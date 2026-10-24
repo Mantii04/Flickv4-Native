@@ -14,7 +14,7 @@ object StreamResolver {
     ) {
         TmdbService.getImdbId(tmdbId, isTv) { imdbId ->
             val results = Collections.synchronizedList(mutableListOf<StreamData>())
-            val latch = CountDownLatch(5)
+            val latch = CountDownLatch(7)
 
             VidSrcResolver.resolve(tmdbId, imdbId, isTv, season, episode) { s, _ ->
                 if (s != null) results.add(s.copy(provider = "vidsrc"))
@@ -36,13 +36,25 @@ object StreamResolver {
                 latch.countDown()
             }
             
-            // NEW: ModiPlay
             ModiPlayResolver.resolve(tmdbId, isTv, season, episode) { s, _ ->
                 if (s != null) results.add(s.copy(provider = "modiplay"))
                 latch.countDown()
             }
+            
+            VidRockResolver.resolve(tmdbId, isTv, season, episode) { url, _ ->
+                if (url != null) {
+                    results.add(StreamData(url, emptyList(), "vidrock"))
+                }
+                latch.countDown()
+            }
 
-            executor.execute {
+            
+            VidCoreResolver.resolve(tmdbId, isTv, season, episode) { s, _ ->
+                if (s != null) results.add(s.copy(provider = "vidcore"))
+                latch.countDown()
+            }
+
+executor.execute {
                 try {
                     latch.await(20, TimeUnit.SECONDS)
                     if (results.isNotEmpty()) onResult(results, null) else onResult(emptyList(), "All providers failed")

@@ -171,6 +171,8 @@ class PlayerActivity : ComponentActivity() {
                 cs.provider == "videasy"                 -> "https://player.videasy.to/"
                 cs.provider == "videm"                   -> "https://videm.xyz/"
                 cs.provider == "vixsrc"                  -> "https://vixsrc.to/"
+                cs.provider == "vidrock"                 -> "https://vidrock.net/"
+                cs.provider == "vidcore"                 -> "https://vidcore.io/"
                 else                                     -> "https://vidsrc.buzz/"
             }
             val orig = ref.trimEnd('/')
