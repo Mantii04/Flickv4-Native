@@ -170,7 +170,10 @@ class PlayerActivity : ComponentActivity() {
                 cs.provider == "vidsrc"                  -> "https://vidsrc.buzz/"
                 cs.provider == "videasy"                 -> "https://player.videasy.to/"
                 cs.provider == "videm"                   -> "https://videm.xyz/"
-                cs.provider?.startsWith("nxsha") == true -> "https://nxsha.space/"
+                cs.provider?.startsWith("nxsha") == true -> {
+                    val u = android.net.Uri.parse(cs.videoUrl)
+                    if (u.scheme != null && u.host != null) "${u.scheme}://${u.host}/" else "https://nxsha.space/"
+                }
                 cs.provider == "vixsrc"                  -> "https://vixsrc.to/"
                 else                                     -> "https://vidsrc.buzz/"
             }
