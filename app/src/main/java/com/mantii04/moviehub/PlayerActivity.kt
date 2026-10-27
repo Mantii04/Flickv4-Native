@@ -84,10 +84,12 @@ class PlayerActivity : ComponentActivity() {
         setContent {
             var streams by remember { mutableStateOf<List<StreamData>>(emptyList()) }
             var errorMsg by remember { mutableStateOf<String?>(null) }
+            var imdbId by remember { mutableStateOf<String?>(null) }
             val context = LocalContext.current
             val db = AppDatabase.getDatabase(context)
 
             LaunchedEffect(id) {
+                TmdbService.getImdbId(id, isTv) { fetchedImdb -> imdbId = fetchedImdb }
                 StreamResolver.resolve(title, year, id, isTv, season, episode) { results, err ->
                     if (results.isNotEmpty()) streams = results else errorMsg = err ?: "Unknown error"
                 }
@@ -97,7 +99,8 @@ class PlayerActivity : ComponentActivity() {
                 when {
                     streams.isNotEmpty() -> ExoPlayerView(
                         streams = streams, id = id, title = title,
-                        poster = poster, isTv = isTv, db = db
+                        poster = poster, isTv = isTv, db = db,
+                        season = season, episode = episode, imdbId = imdbId
                     )
                     errorMsg != null -> Box(
                         modifier = Modifier.fillMaxSize().background(Color.Black),
@@ -129,7 +132,7 @@ class PlayerActivity : ComponentActivity() {
     override fun onDestroy() { exoPlayer?.release(); exoPlayer = null; super.onDestroy() }
 
     @Composable
-    fun ExoPlayerView(streams: List<StreamData>, id: Int, title: String, poster: String, isTv: Boolean, db: AppDatabase) {
+    fun ExoPlayerView(streams: List<StreamData>, id: Int, title: String, poster: String, isTv: Boolean, db: AppDatabase, season: Int?, episode: Int?, imdbId: String?) {
         var currentIndex by remember { mutableStateOf(0) }
         var failedIndices by remember { mutableStateOf(setOf<Int>()) }
         val currentStream = streams.getOrNull(currentIndex)
@@ -142,7 +145,6 @@ class PlayerActivity : ComponentActivity() {
         var playError by remember { mutableStateOf<String?>(null) }
         var showProviderMenu by remember { mutableStateOf(false) }
         var pendingSeek by remember { mutableStateOf(0L) }
-        var imdbId by remember { mutableStateOf<String?>(null) }
         var activeSubUrl by remember { mutableStateOf<String?>(null) }
         var showSubMenu by remember { mutableStateOf(false) }
         var availableSubs by remember { mutableStateOf<List<SubItem>>(emptyList()) }
@@ -166,27 +168,49 @@ class PlayerActivity : ComponentActivity() {
         LaunchedEffect(activeSubUrl) {
             val url = activeSubUrl
             val player = exoPlayer ?: return@LaunchedEffect
+            val cs = currentStream ?: return@LaunchedEffect
+            
             if (url == null) {
-                player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true).build()
+                player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                    .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true).build()
                 return@LaunchedEffect
             }
             
-            // Fetch and sync VTT on a background thread
             withContext(Dispatchers.IO) {
                 val rawVtt = SubtitleFetcher.downloadVtt(url)
                 if (rawVtt != null) {
                     val b64 = android.util.Base64.encodeToString(rawVtt.toByteArray(), android.util.Base64.NO_WRAP)
-                    val dataUri = android.net.Uri.parse("data:text/vtt;base64,$b64")
+                    val dataUri = android.net.Uri.parse("data:text/vtt;base64," + b64)
                     
                     withContext(Dispatchers.Main) {
+                        val ref = getRefererForStream(cs.provider ?: "", cs.videoUrl)
+                        val orig = ref.trimEnd('/')
+                        val httpClient = OkHttpClient.Builder()
+                            .followRedirects(true)
+                            .followSslRedirects(true)
+                            .build()
+                        val dsFactory = OkHttpDataSource.Factory(httpClient)
+                            .setDefaultRequestProperties(mapOf(
+                                "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                                "Referer" to ref,
+                                "Origin" to orig
+                            ))
+                        
                         val sub = MediaItem.SubtitleConfiguration.Builder(dataUri)
                             .setMimeType(MimeTypes.TEXT_VTT)
                             .setLanguage("en")
                             .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
                             .build()
-                        val item = MediaItem.Builder().setUri(currentStream?.videoUrl).setSubtitleConfigurations(listOf(sub)).build()
-                        val source = HlsMediaSource.Factory(dataSourceFactory).createMediaSource(item)
-                        player.setMediaSource(source, true) // true keeps current position
+                        val item = MediaItem.Builder()
+                            .setUri(cs.videoUrl)
+                            .setSubtitleConfigurations(listOf(sub))
+                            .build()
+                        val source = HlsMediaSource.Factory(dsFactory).createMediaSource(item)
+                        val pos = player.currentPosition
+                        player.setMediaSource(source)
+                        player.prepare()
+                        player.seekTo(pos)
+                        player.playWhenReady = true
                         player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
                             .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
                             .build()
@@ -194,6 +218,7 @@ class PlayerActivity : ComponentActivity() {
                 }
             }
         }
+
 
         LaunchedEffect(currentIndex, currentStream) {
             val cs = currentStream
