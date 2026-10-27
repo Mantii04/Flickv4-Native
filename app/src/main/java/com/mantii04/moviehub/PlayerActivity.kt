@@ -298,6 +298,34 @@ class PlayerActivity : ComponentActivity() {
             }
             // --------------------------------------
 
+            // --- BACKGROUND UPGRADE (OPTION C) ---
+            if (streams.size > 1) {
+                launch(Dispatchers.IO) {
+                    try {
+                        val currentRes = getStreamResolution(currentStream.videoUrl, currentStream.provider)
+                        var bestIndex = currentIndex
+                        var bestRes = currentRes
+                        
+                        for (i in streams.indices) {
+                            if (i == currentIndex || i in failedIndices) continue
+                            val res = getStreamResolution(streams[i].videoUrl, streams[i].provider)
+                            if (res > bestRes) {
+                                bestRes = res
+                                bestIndex = i
+                            }
+                        }
+                        
+                        if (bestIndex != currentIndex && bestRes > currentRes) {
+                            withContext(Dispatchers.Main) {
+                                val currentPos = exoPlayer?.currentPosition ?: 0L
+                                if (currentPos > 0) switchTo(bestIndex, currentPos)
+                            }
+                        }
+                    } catch (e: Exception) { }
+                }
+            }
+            // --------------------------------------
+
             try {
                 while (true) {
                     delay(1000)
@@ -495,5 +523,36 @@ class PlayerActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun getRefererForStream(provider: String, videoUrl: String): String {
+        return when {
+            videoUrl.contains("hanerix.com")      -> "https://hanerix.com/"
+            videoUrl.contains("dash-hls-bridge")  -> "https://rozgarlelo.modiplay.xyz/"
+            provider == "vidsrc"                  -> "https://vidsrc.buzz/"
+            provider == "videasy"                 -> "https://player.videasy.to/"
+            provider == "videm"                   -> "https://videm.xyz/"
+            provider == "vixsrc"                  -> "https://vixsrc.to/"
+            provider == "vidrock"                 -> "https://vidrock.net/"
+            provider.startsWith("nxsha")          -> {
+                val u = android.net.Uri.parse(videoUrl)
+                if (u.scheme != null && u.host != null) "${u.scheme}://${u.host}/" else "https://nxsha.space/"
+            }
+            else                                  -> "https://vidsrc.buzz/"
+        }
+    }
+
+    private suspend fun getStreamResolution(url: String, provider: String): Int = withContext(Dispatchers.IO) {
+        try {
+            val ref = getRefererForStream(provider, url)
+            val client = OkHttpClient.Builder().connectTimeout(3, TimeUnit.SECONDS).readTimeout(3, TimeUnit.SECONDS).build()
+            val req = Request.Builder().url(url).header("Referer", ref).build()
+            client.newCall(req).execute().use { res ->
+                if (!res.isSuccessful) return@withContext 0
+                val text = res.peekBody(4096L).string()
+                val matches = Regex("RESOLUTION=\\d+x(\\d+)").findAll(text)
+                matches.maxOfOrNull { it.groupValues[1].toInt() } ?: 0
+            }
+        } catch (e: Exception) { 0 }
     }
 }
