@@ -46,6 +46,10 @@ import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.delay
 
 class PlayerActivity : ComponentActivity() {
@@ -136,10 +140,12 @@ class PlayerActivity : ComponentActivity() {
         var videoHeight by remember { mutableStateOf(0) }
         var playError by remember { mutableStateOf<String?>(null) }
         var showProviderMenu by remember { mutableStateOf(false) }
+        var pendingSeek by remember { mutableStateOf(0L) }
 
-        fun switchTo(index: Int) {
-            if (index == currentIndex) return
+        fun switchTo(index: Int, seekTo: Long = 0L) {
+            if (index == currentIndex && seekTo == 0L) return
             failedIndices = failedIndices - index
+            pendingSeek = seekTo
             exoPlayer?.release()
             exoPlayer = null
             playError = null
@@ -205,6 +211,10 @@ class PlayerActivity : ComponentActivity() {
                 .build()
             player.setMediaSource(mediaSource)
             player.prepare()
+            if (pendingSeek > 0) {
+                player.seekTo(pendingSeek)
+                pendingSeek = 0L
+            }
             player.playWhenReady = true
             player.play()
             exoPlayer = player
@@ -257,6 +267,37 @@ class PlayerActivity : ComponentActivity() {
                 }
             })
 
+            // --- BACKGROUND UPGRADE (OPTION C) ---
+            // If we are playing a stream and there are other streams available,
+            // check if one of them has a higher resolution.
+            if (streams.size > 1) {
+                launch(Dispatchers.IO) {
+                    try {
+                        val currentRes = getStreamResolution(currentStream.videoUrl, currentStream.provider)
+                        var bestIndex = currentIndex
+                        var bestRes = currentRes
+                        
+                        for (i in streams.indices) {
+                            if (i == currentIndex || i in failedIndices) continue
+                            val res = getStreamResolution(streams[i].videoUrl, streams[i].provider)
+                            if (res > bestRes) {
+                                bestRes = res
+                                bestIndex = i
+                            }
+                        }
+                        
+                        // If we found a strictly better stream, swap to it!
+                        if (bestIndex != currentIndex && bestRes > currentRes) {
+                            withContext(Dispatchers.Main) {
+                                val currentPos = exoPlayer?.currentPosition ?: 0L
+                                if (currentPos > 0) switchTo(bestIndex, currentPos)
+                            }
+                        }
+                    } catch (e: Exception) { /* Fail silently, keep playing current stream */ }
+                }
+            }
+            // --------------------------------------
+
             try {
                 while (true) {
                     delay(1000)
@@ -268,6 +309,31 @@ class PlayerActivity : ComponentActivity() {
                         .saveProgress(HistoryEntity(id, title, poster, isTv, position, duration))
                 }
             } catch (_: Exception) { }
+        }
+
+        suspend fun getStreamResolution(url: String, provider: String): Int = withContext(Dispatchers.IO) {
+            try {
+                val ref = when {
+                    provider.startsWith("nxsha") -> {
+                        val u = android.net.Uri.parse(url)
+                        if (u.scheme != null && u.host != null) "${u.scheme}://${u.host}/" else "https://nxsha.space/"
+                    }
+                    provider == "vidrock" -> "https://vidrock.net/"
+                    provider == "vidsrc" -> "https://vidsrc.buzz/"
+                    provider == "vixsrc" -> "https://vixsrc.to/"
+                    provider == "videm" -> "https://videm.xyz/"
+                    provider == "videasy" -> "https://player.videasy.to/"
+                    else -> "https://vidsrc.buzz/"
+                }
+                val client = OkHttpClient.Builder().connectTimeout(3, TimeUnit.SECONDS).readTimeout(3, TimeUnit.SECONDS).build()
+                val req = Request.Builder().url(url).header("Referer", ref).build()
+                client.newCall(req).execute().use { res ->
+                    if (!res.isSuccessful) return@withContext 0
+                    val text = res.peekBody(4096).string()
+                    val matches = Regex("RESOLUTION=\\d+x(\\d+)").findAll(text)
+                    matches.maxOfOrNull { it.groupValues[1].toInt() } ?: 0
+                }
+            } catch (e: Exception) { 0 }
         }
 
         LaunchedEffect(controlsVisible, isPlaying) {
