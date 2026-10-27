@@ -62,6 +62,9 @@ object NxshaResolver {
             put("type", if (isTv) "tv" else "movie")
             put("season", season)
             put("episode", episode)
+            put("ex_lang", false)
+            put("_req_ts", System.currentTimeMillis())
+            put("_req_salt", (1..10).map { (('a'..'z') + ('0'..'9')).random() }.joinToString(""))
         }
         val q = encryptPayload(payload.toString())
         val url = BASE_URL + "/api/sources?q=" + URLEncoder.encode(q, "UTF-8")
