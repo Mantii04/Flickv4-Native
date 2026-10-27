@@ -170,6 +170,7 @@ class PlayerActivity : ComponentActivity() {
                 cs.provider == "vidsrc"                  -> "https://vidsrc.buzz/"
                 cs.provider == "videasy"                 -> "https://player.videasy.to/"
                 cs.provider == "videm"                   -> "https://videm.xyz/"
+                cs.provider?.startsWith("nxsha") == true -> "https://nxsha.space/"
                 cs.provider == "vixsrc"                  -> "https://vixsrc.to/"
                 else                                     -> "https://vidsrc.buzz/"
             }

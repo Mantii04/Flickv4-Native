@@ -47,7 +47,7 @@ object NxshaResolver {
                         }
                     }
                 } catch (e: Exception) {
-                    lastErr = "${scraper}: ${e.message}"
+                    lastErr = scraper + ": " + e.message
                 }
             }
             mainHandler.post { onResult(null, lastErr ?: "All nxsha providers failed") }
@@ -64,12 +64,12 @@ object NxshaResolver {
             put("episode", episode)
         }
         val q = encryptPayload(payload.toString())
-        val url = "$BASE_URL/api/sources?q=${URLEncoder.encode(q, "UTF-8")}"
+        val url = BASE_URL + "/api/sources?q=" + URLEncoder.encode(q, "UTF-8")
 
         val req = Request.Builder()
             .url(url)
             .header("User-Agent", UA)
-            .header("Referer", "$BASE_URL/")
+            .header("Referer", BASE_URL + "/")
             .header("Accept", "application/json")
             .build()
 
