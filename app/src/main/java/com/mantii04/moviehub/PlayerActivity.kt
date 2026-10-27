@@ -142,6 +142,11 @@ class PlayerActivity : ComponentActivity() {
         var playError by remember { mutableStateOf<String?>(null) }
         var showProviderMenu by remember { mutableStateOf(false) }
         var pendingSeek by remember { mutableStateOf(0L) }
+        var imdbId by remember { mutableStateOf<String?>(null) }
+        var activeSubUrl by remember { mutableStateOf<String?>(null) }
+        var showSubMenu by remember { mutableStateOf(false) }
+        var availableSubs by remember { mutableStateOf<List<SubItem>>(emptyList()) }
+        var currentLangDisplay by remember { mutableStateOf("Off") }
 
         fun switchTo(index: Int, seekTo: Long = 0L) {
             if (index == currentIndex && seekTo == 0L) return
@@ -155,6 +160,39 @@ class PlayerActivity : ComponentActivity() {
             position = 0L
             duration = 1L
             currentIndex = index
+        }
+
+        // Update subtitles on the fly
+        LaunchedEffect(activeSubUrl) {
+            val url = activeSubUrl
+            val player = exoPlayer ?: return@LaunchedEffect
+            if (url == null) {
+                player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true).build()
+                return@LaunchedEffect
+            }
+            
+            // Fetch and sync VTT on a background thread
+            withContext(Dispatchers.IO) {
+                val rawVtt = SubtitleFetcher.downloadVtt(url)
+                if (rawVtt != null) {
+                    val b64 = android.util.Base64.encodeToString(rawVtt.toByteArray(), android.util.Base64.NO_WRAP)
+                    val dataUri = android.net.Uri.parse("data:text/vtt;base64,$b64")
+                    
+                    withContext(Dispatchers.Main) {
+                        val sub = MediaItem.SubtitleConfiguration.Builder(dataUri)
+                            .setMimeType(MimeTypes.TEXT_VTT)
+                            .setLanguage("en")
+                            .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                            .build()
+                        val item = MediaItem.Builder().setUri(currentStream?.videoUrl).setSubtitleConfigurations(listOf(sub)).build()
+                        val source = HlsMediaSource.Factory(dataSourceFactory).createMediaSource(item)
+                        player.setMediaSource(source, true) // true keeps current position
+                        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                            .build()
+                    }
+                }
+            }
         }
 
         LaunchedEffect(currentIndex, currentStream) {
@@ -194,16 +232,8 @@ class PlayerActivity : ComponentActivity() {
                 ))
 
             val mediaItemBuilder = MediaItem.Builder().setUri(cs.videoUrl)
-            if (cs.subtitles.isNotEmpty()) {
-                val subConfigs = cs.subtitles.map { sub ->
-                    MediaItem.SubtitleConfiguration.Builder(android.net.Uri.parse(sub.url))
-                        .setMimeType(MimeTypes.TEXT_VTT)
-                        .setLanguage(sub.language)
-                        .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
-                        .build()
-                }
-                mediaItemBuilder.setSubtitleConfigurations(subConfigs)
-            }
+            // Force disable all provider subtitles (fixes Vidsrc auto-subs)
+            // Subtitles are now handled manually via the UI.
 
             val mediaSource = HlsMediaSource.Factory(dataSourceFactory)
                 .createMediaSource(mediaItemBuilder.build())
@@ -416,6 +446,52 @@ class PlayerActivity : ComponentActivity() {
                             modifier = Modifier.weight(1f).padding(start = 8.dp)
                         )
 
+                        // SUBTITLE BUTTON
+                        Box {
+                            Surface(
+                                color = Color.Black.copy(alpha = 0.65f),
+                                shape = RoundedCornerShape(6.dp),
+                                onClick = {
+                                    if (availableSubs.isEmpty()) {
+                                        SubtitleFetcher.fetch(imdbId ?: "", isTv, season, episode) { subs ->
+                                            availableSubs = subs
+                                            showSubMenu = true
+                                        }
+                                    } else {
+                                        showSubMenu = true
+                                    }
+                                }
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+                                    Icon(Icons.Default.Subtitles, contentDescription = "Subtitles", tint = Color.White, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(currentLangDisplay, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                            DropdownMenu(expanded = showSubMenu, onDismissRequest = { showSubMenu = false }) {
+                                DropdownMenuItem(
+                                    text = { Text("Off") },
+                                    onClick = {
+                                        activeSubUrl = null
+                                        currentLangDisplay = "Off"
+                                        showSubMenu = false
+                                    }
+                                )
+                                availableSubs.forEach { sub ->
+                                    DropdownMenuItem(
+                                        text = { Text(sub.display) },
+                                        onClick = {
+                                            activeSubUrl = sub.url
+                                            currentLangDisplay = sub.language.uppercase()
+                                            showSubMenu = false
+                                        }
+                                    )
+                                }
+
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+
                         Box {
                             Surface(
                                 color = Color.Black.copy(alpha = 0.65f),
@@ -556,4 +632,5 @@ class PlayerActivity : ComponentActivity() {
             }
         } catch (e: Exception) { 0 }
     }
+
 }
