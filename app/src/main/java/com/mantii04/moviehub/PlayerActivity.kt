@@ -221,6 +221,8 @@ class PlayerActivity : ComponentActivity() {
                         player.playWhenReady = true
                         player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
                             .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                            .setPreferredTextLanguage("en")
+                            .setSelectUndeterminedTextLanguage(true)
                             .build()
                     }
                 }
@@ -309,6 +311,20 @@ class PlayerActivity : ComponentActivity() {
                 }
 
                 override fun onTracksChanged(tracks: Tracks) {
+                    // If a subtitle is active, force the player to select it
+                    if (activeSubUrl != null) {
+                        for (group in tracks.groups) {
+                            if (group.type == C.TRACK_TYPE_TEXT) {
+                                try {
+                                    val override = TrackSelectionOverride(group.mediaTrackGroup, 0)
+                                    player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                                        .setOverrideForType(override)
+                                        .build()
+                                } catch (_: Exception) {}
+                            }
+                        }
+                    }
+                    
                     val videoGroups = tracks.groups.filter { it.type == C.TRACK_TYPE_VIDEO }
                     if (videoGroups.isEmpty()) return
                     var bestGroup: Tracks.Group? = null
@@ -453,6 +469,8 @@ class PlayerActivity : ComponentActivity() {
                         )
                         keepScreenOn = true
                         useController = false
+                        subtitleView?.setStyle(androidx.media3.ui.CaptionStyleCompat.DEFAULT)
+                        subtitleView?.setFractionalTextSize(0.08f)
                     }
                 },
                 update = { view ->

@@ -53,8 +53,12 @@ object SubtitleFetcher {
     fun downloadToCache(context: Context, url: String): File? {
         return try {
             val req = Request.Builder().url(url).header("User-Agent", "Mozilla/5.0").build()
-            val body = client.newCall(req).execute().use { it.body?.bytes() }
+            var body = client.newCall(req).execute().use { it.body?.bytes() }
             if (body != null) {
+                // Strip UTF-8 BOM (EF BB BF) if present, otherwise the first subtitle cue fails to parse
+                if (body.size >= 3 && body[0] == 0xEF.toByte() && body[1] == 0xBB.toByte() && body[2] == 0xBF.toByte()) {
+                    body = body.copyOfRange(3, body.size)
+                }
                 val tempFile = File(context.cacheDir, "temp_sub.srt")
                 tempFile.writeBytes(body)
                 tempFile
