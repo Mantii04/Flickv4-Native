@@ -50,6 +50,8 @@ import androidx.media3.datasource.okhttp.OkHttpDataSource
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.exoplayer.source.MergingMediaSource
+import androidx.media3.exoplayer.source.SingleSampleMediaSource
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.AspectRatioFrameLayout
@@ -193,18 +195,6 @@ class PlayerActivity : ComponentActivity() {
                 if (subFile != null) {
                     withContext(Dispatchers.Main) {
                         val fileUri = android.net.Uri.fromFile(subFile)
-                        
-                        val sub = MediaItem.SubtitleConfiguration.Builder(fileUri)
-                            .setMimeType(MimeTypes.APPLICATION_SUBRIP)
-                            .setLanguage("en")
-                            .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
-                            .build()
-                        
-                        val item = MediaItem.Builder()
-                            .setUri(cs.videoUrl)
-                            .setSubtitleConfigurations(listOf(sub))
-                            .build()
-                        
                         val ref = getRefererForStream(cs.provider ?: "", cs.videoUrl)
                         val orig = ref.trimEnd('/')
                         val okHttpFactory = OkHttpDataSource.Factory(OkHttpClient.Builder().followRedirects(true).build())
@@ -213,22 +203,37 @@ class PlayerActivity : ComponentActivity() {
                                 "Referer" to ref,
                                 "Origin" to orig
                             ))
-                        // DefaultDataSource allows ExoPlayer to use OkHttp for internet AND FileDataSource for local subtitles
                         val dsFactory = DefaultDataSource.Factory(ctx, okHttpFactory)
-                        
-                        android.util.Log.d("SUBFIX", "Building source with sub URI: $fileUri")
-                        val source = HlsMediaSource.Factory(dsFactory).createMediaSource(item)
-                        val pos = player.currentPosition
-                        player.setMediaSource(source)
-                        player.prepare()
-                        player.seekTo(pos)
-                        player.playWhenReady = true
+
+                        // 1. Enable text tracks BEFORE loading
                         player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
                             .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
                             .setPreferredTextLanguage("en")
                             .setSelectUndeterminedTextLanguage(true)
                             .build()
-                        android.util.Log.d("SUBFIX", "Track params set: text enabled, lang=en")
+
+                        // 2. Video source from provider (HLS)
+                        val videoItem = MediaItem.Builder().setUri(cs.videoUrl).build()
+                        val videoSource = HlsMediaSource.Factory(dsFactory).createMediaSource(videoItem)
+
+                        // 3. Subtitle source from local file
+                        val subConfig = MediaItem.SubtitleConfiguration.Builder(fileUri)
+                            .setMimeType(MimeTypes.APPLICATION_SUBRIP)
+                            .setLanguage("en")
+                            .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                            .build()
+                        val subSource = SingleSampleMediaSource.Factory(dsFactory)
+                            .setTreatLoadErrorsAsEndOfStream(true)
+                            .createMediaSource(subConfig, C.TIME_UNSET)
+
+                        // 4. Merge video + subtitle
+                        val mergedSource = MergingMediaSource(videoSource, subSource)
+                        val pos = player.currentPosition
+                        player.setMediaSource(mergedSource)
+                        player.prepare()
+                        player.seekTo(pos)
+                        player.playWhenReady = true
+                        android.util.Log.d("SUBFIX", "MergedMediaSource applied for $fileUri")
                     }
                 }
             }
