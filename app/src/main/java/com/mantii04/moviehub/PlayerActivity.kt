@@ -471,6 +471,7 @@ class PlayerActivity : ComponentActivity() {
                         useController = false
                         subtitleView?.setStyle(androidx.media3.ui.CaptionStyleCompat.DEFAULT)
                         subtitleView?.setFractionalTextSize(0.08f)
+                        subtitleView?.setBottomPaddingFraction(0.15f)
                     }
                 },
                 update = { view ->

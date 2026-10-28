@@ -22,8 +22,8 @@ object SubtitleFetcher {
                 val cleanImdb = imdbId.removePrefix("tt")
                 val base = "https://api.thesubtitledb.org/v1/by-imdb/$cleanImdb"
                 // Added &lang=en to force English only
-                val url = if (isTv) "$base/season/${season ?: 1}/episode/${episode ?: 1}?lang=en&client=app" 
-                          else "$base?lang=en&client=app"
+                val url = if (isTv) "$base/season/${season ?: 1}/episode/${episode ?: 1}?client=app&limit=100" 
+                          else "$base?client=app&limit=100"
                 
                 val req = Request.Builder().url(url).header("User-Agent", "Mozilla/5.0").build()
                 val resp = client.newCall(req).execute().use { it.body?.string() ?: "{}" }
@@ -42,7 +42,7 @@ object SubtitleFetcher {
                         ))
                     }
                 }
-                onResult(list)
+                onResult(list.distinctBy { it.language })
             } catch (e: Exception) {
                 onResult(emptyList())
             }
