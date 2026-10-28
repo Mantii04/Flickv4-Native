@@ -56,18 +56,28 @@ object SubtitleFetcher {
 
     // Downloads the SRT and saves it to a real file in the cache directory
     fun downloadToCache(context: Context, url: String): File? {
+        android.util.Log.d("SUBFIX", "downloadToCache START: $url")
         return try {
             val req = Request.Builder().url(url).header("User-Agent", "Mozilla/5.0").build()
             var body = client.newCall(req).execute().use { it.body?.bytes() }
+            android.util.Log.d("SUBFIX", "downloadToCache RAW bytes=${body?.size ?: 0}")
             if (body != null) {
-                // Strip UTF-8 BOM (EF BB BF) if present, otherwise the first subtitle cue fails to parse
                 if (body.size >= 3 && body[0] == 0xEF.toByte() && body[1] == 0xBB.toByte() && body[2] == 0xBF.toByte()) {
                     body = body.copyOfRange(3, body.size)
+                    android.util.Log.d("SUBFIX", "BOM stripped, new size=${body.size}")
                 }
                 val tempFile = File(context.cacheDir, "temp_sub.srt")
                 tempFile.writeBytes(body)
+                android.util.Log.d("SUBFIX", "FILE WRITTEN: ${tempFile.absolutePath} size=${tempFile.length()}")
+                android.util.Log.d("SUBFIX", "FIRST 200 CHARS: ${String(body).take(200)}")
                 tempFile
-            } else null
-        } catch (e: Exception) { null }
+            } else {
+                android.util.Log.e("SUBFIX", "BODY NULL")
+                null
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("SUBFIX", "downloadToCache EXCEPTION: ${e.message}", e)
+            null
+        }
     }
 }

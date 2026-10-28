@@ -175,6 +175,7 @@ class PlayerActivity : ComponentActivity() {
 
         // Update subtitles on the fly using a real file URI
         LaunchedEffect(activeSubUrl) {
+            android.util.Log.d("SUBFIX", "Subtitle effect fired, activeSubUrl=$activeSubUrl")
             val url = activeSubUrl
             val player = exoPlayer ?: return@LaunchedEffect
             val cs = currentStream ?: return@LaunchedEffect
@@ -188,6 +189,7 @@ class PlayerActivity : ComponentActivity() {
             
             withContext(Dispatchers.IO) {
                 val subFile = SubtitleFetcher.downloadToCache(ctx, url)
+                android.util.Log.d("SUBFIX", "Downloaded file: $subFile exists=${subFile?.exists()} size=${subFile?.length()}")
                 if (subFile != null) {
                     withContext(Dispatchers.Main) {
                         val fileUri = android.net.Uri.fromFile(subFile)
@@ -214,6 +216,7 @@ class PlayerActivity : ComponentActivity() {
                         // DefaultDataSource allows ExoPlayer to use OkHttp for internet AND FileDataSource for local subtitles
                         val dsFactory = DefaultDataSource.Factory(ctx, okHttpFactory)
                         
+                        android.util.Log.d("SUBFIX", "Building source with sub URI: $fileUri")
                         val source = HlsMediaSource.Factory(dsFactory).createMediaSource(item)
                         val pos = player.currentPosition
                         player.setMediaSource(source)
@@ -225,6 +228,7 @@ class PlayerActivity : ComponentActivity() {
                             .setPreferredTextLanguage("en")
                             .setSelectUndeterminedTextLanguage(true)
                             .build()
+                        android.util.Log.d("SUBFIX", "Track params set: text enabled, lang=en")
                     }
                 }
             }
@@ -312,6 +316,8 @@ class PlayerActivity : ComponentActivity() {
                 }
 
                 override fun onTracksChanged(tracks: Tracks) {
+                    val allTypes = tracks.groups.map { "type=${it.type} len=${it.length} supported=${it.isSupported}" }
+                    android.util.Log.d("SUBFIX", "onTracksChanged: $allTypes")
                     // If a subtitle is active, force the player to select it
                     if (activeSubUrl != null) {
                         for (group in tracks.groups) {
