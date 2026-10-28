@@ -35,14 +35,19 @@ object SubtitleFetcher {
                 if (items != null) {
                     for (i in 0 until items.length()) {
                         val obj = items.getJSONObject(i)
+                        val langCode = obj.optString("language", "en")
+                        // Translate "en" to "English", "ar" to "Arabic", etc.
+                        val langName = java.util.Locale(langCode).getDisplayLanguage(java.util.Locale.ENGLISH)
+                            .replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.ENGLISH) else it.toString() }
+                            
                         list.add(SubItem(
-                            language = obj.optString("language", "en"),
-                            display = obj.optString("release_name", "English"),
+                            language = langCode,
+                            display = langName, // Now shows "English", "Arabic", etc.
                             url = obj.optString("download_url", "")
                         ))
                     }
                 }
-                onResult(list.distinctBy { it.language })
+                onResult(list.distinctBy { it.language }.sortedBy { it.display })
             } catch (e: Exception) {
                 onResult(emptyList())
             }

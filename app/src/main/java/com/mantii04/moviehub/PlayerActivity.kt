@@ -469,9 +469,17 @@ class PlayerActivity : ComponentActivity() {
                         )
                         keepScreenOn = true
                         useController = false
-                        subtitleView?.setStyle(androidx.media3.ui.CaptionStyleCompat.DEFAULT)
-                        subtitleView?.setFractionalTextSize(0.08f)
-                        subtitleView?.setBottomPaddingFraction(0.15f)
+                        val netflixStyle = androidx.media3.ui.CaptionStyleCompat(
+                            android.graphics.Color.WHITE,
+                            android.graphics.Color.argb(180, 0, 0, 0), // Semi-transparent black box
+                            android.graphics.Color.TRANSPARENT,
+                            androidx.media3.ui.CaptionStyleCompat.EDGE_TYPE_NONE, // No outline
+                            android.graphics.Color.WHITE,
+                            null
+                        )
+                        subtitleView?.setStyle(netflixStyle)
+                        subtitleView?.setFractionalTextSize(0.055f) // Standard YouTube size (5.5% of screen height)
+                        subtitleView?.setBottomPaddingFraction(0.18f) // Push higher to clear controls and nav bar
                     }
                 },
                 update = { view ->
