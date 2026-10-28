@@ -471,21 +471,18 @@ class PlayerActivity : ComponentActivity() {
                         keepScreenOn = true
                         useController = false
                         val netflixStyle = androidx.media3.ui.CaptionStyleCompat(
-                            android.graphics.Color.WHITE,
-                            android.graphics.Color.argb(200, 0, 0, 0), // 80% opaque black box (Netflix style)
-                            android.graphics.Color.TRANSPARENT,
+                            android.graphics.Color.WHITE, // White text
+                            android.graphics.Color.argb(200, 0, 0, 0), // Semi-transparent black box
+                            android.graphics.Color.TRANSPARENT, // Window color
                             androidx.media3.ui.CaptionStyleCompat.EDGE_TYPE_NONE, // No outline
-                            android.graphics.Color.WHITE,
-                            android.graphics.Typeface.DEFAULT
+                            android.graphics.Color.WHITE, // Edge color
+                            null
                         )
                         subtitleView?.setStyle(netflixStyle)
-                        // Use a fixed, professional size instead of fractional (prevents huge text in landscape)
-                        subtitleView?.setFixedTextSize(TypedValue.COMPLEX_UNIT_SP, 16f) 
-                        // Sit 12% above the bottom edge so it's never chopped
+                        // Use fractional sizing: 3.5% of screen height. Perfect for both portrait and landscape.
+                        subtitleView?.setFractionalTextSize(0.035f) 
+                        // Sit 12% above the bottom edge so it's never chopped off
                         subtitleView?.setBottomPaddingFraction(0.12f)
-                        // Ignore ugly font colors baked into the SRT file (like the orange tags)
-                        subtitleView?.setApplyEmbeddedStyles(false)
-                        subtitleView?.setApplyEmbeddedFontSizes(false)
                     }
                 },
                 update = { view ->
