@@ -48,6 +48,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.AspectRatioFrameLayout
@@ -203,12 +204,14 @@ class PlayerActivity : ComponentActivity() {
                         
                         val ref = getRefererForStream(cs.provider ?: "", cs.videoUrl)
                         val orig = ref.trimEnd('/')
-                        val dsFactory = OkHttpDataSource.Factory(OkHttpClient.Builder().followRedirects(true).build())
+                        val okHttpFactory = OkHttpDataSource.Factory(OkHttpClient.Builder().followRedirects(true).build())
                             .setDefaultRequestProperties(mapOf(
                                 "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
                                 "Referer" to ref,
                                 "Origin" to orig
                             ))
+                        // DefaultDataSource allows ExoPlayer to use OkHttp for internet AND FileDataSource for local subtitles
+                        val dsFactory = DefaultDataSource.Factory(ctx, okHttpFactory)
                         
                         val source = HlsMediaSource.Factory(dsFactory).createMediaSource(item)
                         val pos = player.currentPosition
@@ -426,8 +429,8 @@ class PlayerActivity : ComponentActivity() {
             } catch (e: Exception) { 0 }
         }
 
-        LaunchedEffect(controlsVisible, isPlaying) {
-            if (controlsVisible && isPlaying) { delay(3000); controlsVisible = false }
+        LaunchedEffect(controlsVisible, isPlaying, showSubMenu) {
+            if (controlsVisible && isPlaying && !showSubMenu) { delay(3000); controlsVisible = false }
         }
 
         Box(modifier = Modifier.fillMaxSize().background(Color.Black).pointerInput(Unit) {
