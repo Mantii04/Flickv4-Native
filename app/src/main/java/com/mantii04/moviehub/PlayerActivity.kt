@@ -3,6 +3,7 @@ package com.mantii04.moviehub
 import android.content.pm.ActivityInfo
 import android.os.Build
 import android.os.Bundle
+import android.util.TypedValue
 import android.view.ViewGroup
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -471,15 +472,20 @@ class PlayerActivity : ComponentActivity() {
                         useController = false
                         val netflixStyle = androidx.media3.ui.CaptionStyleCompat(
                             android.graphics.Color.WHITE,
-                            android.graphics.Color.argb(180, 0, 0, 0), // Semi-transparent black box
+                            android.graphics.Color.argb(200, 0, 0, 0), // 80% opaque black box (Netflix style)
                             android.graphics.Color.TRANSPARENT,
                             androidx.media3.ui.CaptionStyleCompat.EDGE_TYPE_NONE, // No outline
                             android.graphics.Color.WHITE,
-                            null
+                            android.graphics.Typeface.DEFAULT
                         )
                         subtitleView?.setStyle(netflixStyle)
-                        subtitleView?.setFractionalTextSize(0.055f) // Standard YouTube size (5.5% of screen height)
-                        subtitleView?.setBottomPaddingFraction(0.18f) // Push higher to clear controls and nav bar
+                        // Use a fixed, professional size instead of fractional (prevents huge text in landscape)
+                        subtitleView?.setFixedTextSize(TypedValue.COMPLEX_UNIT_SP, 16f) 
+                        // Sit 12% above the bottom edge so it's never chopped
+                        subtitleView?.setBottomPaddingFraction(0.12f)
+                        // Ignore ugly font colors baked into the SRT file (like the orange tags)
+                        subtitleView?.setApplyEmbeddedStyles(false)
+                        subtitleView?.setApplyEmbeddedFontSizes(false)
                     }
                 },
                 update = { view ->
