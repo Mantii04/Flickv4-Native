@@ -672,7 +672,6 @@ class PlayerActivity : ComponentActivity() {
                 }
             }
         }
-    }
 
     private fun getRefererForStream(provider: String, videoUrl: String): String {
         return when {
@@ -705,4 +704,3 @@ class PlayerActivity : ComponentActivity() {
         } catch (e: Exception) { 0 }
     }
 
-}
