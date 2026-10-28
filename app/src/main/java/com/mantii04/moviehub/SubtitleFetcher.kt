@@ -2,7 +2,6 @@ package com.mantii04.moviehub
 
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
@@ -15,21 +14,34 @@ object SubtitleFetcher {
         .build()
 
     fun fetch(imdbId: String, isTv: Boolean, season: Int?, episode: Int?, onResult: (List<SubItem>) -> Unit) {
+        if (imdbId.isBlank()) { onResult(emptyList()); return }
         Thread {
             try {
-                val url = if (isTv) "https://subs.wyzie.ru/search?id=$imdbId&season=${season ?: 1}&episode=${episode ?: 1}"
-                          else "https://subs.wyzie.ru/search?id=$imdbId"
-                val req = Request.Builder().url(url).build()
-                val resp = client.newCall(req).execute().use { it.body?.string() ?: "[]" }
-                val arr = JSONArray(resp)
+                val cleanImdb = imdbId.removePrefix("tt")
+                val base = "https://api.thesubtitledb.org/v1/by-imdb/$cleanImdb"
+                val url = if (isTv) "$base/season/${season ?: 1}/episode/${episode ?: 1}?client=app" 
+                          else "$base?client=app"
+                
+                val req = Request.Builder()
+                    .url(url)
+                    .header("User-Agent", "Mozilla/5.0")
+                    .build()
+                
+                val resp = client.newCall(req).execute().use { it.body?.string() ?: "{}" }
+                val json = JSONObject(resp)
+                
                 val list = mutableListOf<SubItem>()
-                for (i in 0 until arr.length()) {
-                    val obj = arr.getJSONObject(i)
-                    list.add(SubItem(
-                        language = obj.optString("language", "en"),
-                        display = obj.optString("display", "English"),
-                        url = obj.optString("url", "")
-                    ))
+                val items = json.optJSONObject("subtitles")?.optJSONArray("items")
+                
+                if (items != null) {
+                    for (i in 0 until items.length()) {
+                        val obj = items.getJSONObject(i)
+                        list.add(SubItem(
+                            language = obj.optString("language", "en"),
+                            display = obj.optString("release_name", "English"),
+                            url = obj.optString("download_url", "")
+                        ))
+                    }
                 }
                 onResult(list)
             } catch (e: Exception) {
@@ -40,8 +52,11 @@ object SubtitleFetcher {
 
     fun downloadVtt(url: String): String? {
         return try {
-            val req = Request.Builder().url(url).build()
-            client.newCall(req).execute().use { it.body?.string() }
+            val req = Request.Builder().url(url).header("User-Agent", "Mozilla/5.0").build()
+            var text = client.newCall(req).execute().use { it.body?.string() }
+            // Strip BOM if present
+            if (text != null && text.startsWith("\uFEFF")) text = text.substring(1)
+            text
         } catch (e: Exception) { null }
     }
 }

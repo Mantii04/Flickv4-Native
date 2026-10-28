@@ -180,7 +180,7 @@ class PlayerActivity : ComponentActivity() {
                 val rawVtt = SubtitleFetcher.downloadVtt(url)
                 if (rawVtt != null) {
                     val b64 = android.util.Base64.encodeToString(rawVtt.toByteArray(), android.util.Base64.NO_WRAP)
-                    val dataUri = android.net.Uri.parse("data:text/vtt;base64," + b64)
+                    val dataUri = android.net.Uri.parse("data:application/x-subrip;base64," + b64)
                     
                     withContext(Dispatchers.Main) {
                         val ref = getRefererForStream(cs.provider ?: "", cs.videoUrl)
@@ -197,7 +197,7 @@ class PlayerActivity : ComponentActivity() {
                             ))
                         
                         val sub = MediaItem.SubtitleConfiguration.Builder(dataUri)
-                            .setMimeType(MimeTypes.TEXT_VTT)
+                            .setMimeType(MimeTypes.APPLICATION_SUBRIP)
                             .setLanguage("en")
                             .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
                             .build()
@@ -504,7 +504,10 @@ class PlayerActivity : ComponentActivity() {
                                 )
                                 availableSubs.forEach { sub ->
                                     DropdownMenuItem(
-                                        text = { Text(sub.display) },
+                                        text = { 
+                                            val displayName = if (sub.display.length > 40) sub.display.take(40) + "..." else sub.display
+                                            Text("${sub.language.uppercase()} - $displayName", fontSize = 12.sp) 
+                                        },
                                         onClick = {
                                             activeSubUrl = sub.url
                                             currentLangDisplay = sub.language.uppercase()
