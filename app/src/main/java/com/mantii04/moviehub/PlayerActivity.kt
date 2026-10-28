@@ -169,11 +169,12 @@ class PlayerActivity : ComponentActivity() {
             currentIndex = index
         }
 
-        // Update subtitles on the fly
+        // Update subtitles on the fly using a real file URI
         LaunchedEffect(activeSubUrl) {
             val url = activeSubUrl
             val player = exoPlayer ?: return@LaunchedEffect
             val cs = currentStream ?: return@LaunchedEffect
+            val ctx = context
             
             if (url == null) {
                 player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
@@ -182,34 +183,31 @@ class PlayerActivity : ComponentActivity() {
             }
             
             withContext(Dispatchers.IO) {
-                val rawVtt = SubtitleFetcher.downloadVtt(url)
-                if (rawVtt != null) {
-                    val b64 = android.util.Base64.encodeToString(rawVtt.toByteArray(), android.util.Base64.NO_WRAP)
-                    val dataUri = android.net.Uri.parse("data:application/x-subrip;base64," + b64)
-                    
+                val subFile = SubtitleFetcher.downloadToCache(ctx, url)
+                if (subFile != null) {
                     withContext(Dispatchers.Main) {
+                        val fileUri = android.net.Uri.fromFile(subFile)
+                        
+                        val sub = MediaItem.SubtitleConfiguration.Builder(fileUri)
+                            .setMimeType(MimeTypes.APPLICATION_SUBRIP)
+                            .setLanguage("en")
+                            .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                            .build()
+                        
+                        val item = MediaItem.Builder()
+                            .setUri(cs.videoUrl)
+                            .setSubtitleConfigurations(listOf(sub))
+                            .build()
+                        
                         val ref = getRefererForStream(cs.provider ?: "", cs.videoUrl)
                         val orig = ref.trimEnd('/')
-                        val httpClient = OkHttpClient.Builder()
-                            .followRedirects(true)
-                            .followSslRedirects(true)
-                            .build()
-                        val dsFactory = OkHttpDataSource.Factory(httpClient)
+                        val dsFactory = OkHttpDataSource.Factory(OkHttpClient.Builder().followRedirects(true).build())
                             .setDefaultRequestProperties(mapOf(
                                 "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
                                 "Referer" to ref,
                                 "Origin" to orig
                             ))
                         
-                        val sub = MediaItem.SubtitleConfiguration.Builder(dataUri)
-                            .setMimeType(MimeTypes.APPLICATION_SUBRIP)
-                            .setLanguage("en")
-                            .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
-                            .build()
-                        val item = MediaItem.Builder()
-                            .setUri(cs.videoUrl)
-                            .setSubtitleConfigurations(listOf(sub))
-                            .build()
                         val source = HlsMediaSource.Factory(dsFactory).createMediaSource(item)
                         val pos = player.currentPosition
                         player.setMediaSource(source)
@@ -223,6 +221,7 @@ class PlayerActivity : ComponentActivity() {
                 }
             }
         }
+
 
 
         LaunchedEffect(currentIndex, currentStream) {
