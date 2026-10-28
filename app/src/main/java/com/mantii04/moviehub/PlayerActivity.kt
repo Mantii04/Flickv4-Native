@@ -138,6 +138,8 @@ class PlayerActivity : ComponentActivity() {
 
     @Composable
     fun ExoPlayerView(streams: List<StreamData>, id: Int, title: String, poster: String, isTv: Boolean, db: AppDatabase, season: Int?, episode: Int?, imdbId: String?) {
+        val context = LocalContext.current
+
         var currentIndex by remember { mutableStateOf(0) }
         var failedIndices by remember { mutableStateOf(setOf<Int>()) }
         val currentStream = streams.getOrNull(currentIndex)
