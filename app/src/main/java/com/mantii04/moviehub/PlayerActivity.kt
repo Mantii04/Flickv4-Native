@@ -161,6 +161,20 @@ class PlayerActivity : ComponentActivity() {
         var availableSubs by remember { mutableStateOf<List<SubItem>>(emptyList()) }
         var currentLangDisplay by remember { mutableStateOf("Off") }
 
+        // One subtitle per language, matched to the current video duration
+        val menuSubs: List<SubItem> by remember(availableSubs, exoPlayer?.duration) {
+            derivedStateOf {
+                val videoDurSec = (exoPlayer?.duration ?: 0L) / 1000L
+                availableSubs.groupBy { it.language }.map { (_, items) ->
+                    if (videoDurSec <= 0L) items.first()
+                    else items.minByOrNull { sub ->
+                        if (sub.durationSec <= 0L) Long.MAX_VALUE
+                        else Math.abs(sub.durationSec - videoDurSec)
+                    } ?: items.first()
+                }.sortedBy { it.display }
+            }
+        }
+
         fun switchTo(index: Int, seekTo: Long = 0L) {
             if (index == currentIndex && seekTo == 0L) return
             failedIndices = failedIndices - index
@@ -651,26 +665,6 @@ class PlayerActivity : ComponentActivity() {
                                 inactiveTrackColor = Color.DarkGray
                             )
                         )
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            val cM = (position / 1000) / 60; val cS = (position / 1000) % 60
-                            val dM = (duration / 1000) / 60; val dS = (duration / 1000) % 60
-                            Text(String.format("%02d:%02d", cM, cS), color = Color.White, fontSize = 12.sp)
-                            Text(String.format("%02d:%02d", dM, dS), color = Color.Gray, fontSize = 12.sp)
-                        }
-                    }
-
-                    if (playError != null) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.padding(24.dp)
-                                    .background(Color.Black.copy(alpha = 0.85f), RoundedCornerShape(8.dp))
-                                    .padding(16.dp)
-                            ) {
-                                Text("Playback error", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(playError!!, color = Color.Yellow, fontSize = 12.sp)
-                                Spacer(modifier = Modifier.height(12.dp))
                                 Button(onClick = { finish() }) { Text("Back") }
                             }
                         }

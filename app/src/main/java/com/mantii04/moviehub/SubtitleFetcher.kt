@@ -7,7 +7,7 @@ import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.TimeUnit
 
-data class SubItem(val language: String, val display: String, val url: String)
+data class SubItem(val language: String, val display: String, val url: String, val durationSec: Long = 0L)
 
 object SubtitleFetcher {
     private val client = OkHttpClient.Builder()
@@ -42,12 +42,13 @@ object SubtitleFetcher {
                             
                         list.add(SubItem(
                             language = langCode,
-                            display = langName, // Now shows "English", "Arabic", etc.
-                            url = obj.optString("download_url", "")
+                            display = langName,
+                            url = obj.optString("download_url", ""),
+                            durationSec = obj.optLong("duration_s", 0L)
                         ))
                     }
                 }
-                onResult(list.distinctBy { it.language }.sortedBy { it.display })
+                onResult(list.sortedBy { it.display })
             } catch (e: Exception) {
                 onResult(emptyList())
             }
